@@ -7,6 +7,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AppProvider } from '@/store';
 import { CarTransitionProvider } from '@/components/car-transition';
 import { PwaSetup } from '@/components/pwa-setup';
+import { Toast } from '@/components/toast';
+import { InstallBanner } from '@/components/install-banner';
 
 export const unstable_settings = {
   initialRouteName: 'login',
@@ -27,9 +29,11 @@ export default function RootLayout() {
             <Stack.Screen name="exito" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>
+          <Toast />
         </CarTransitionProvider>
       </AppProvider>
       <PwaSetup />
+      <InstallBanner />
       <StatusBar style="auto" />
     </ThemeProvider>
   );

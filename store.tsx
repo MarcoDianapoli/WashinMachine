@@ -68,6 +68,8 @@ interface AppState {
   agregarCita: (cita: Cita) => void;
   cancelarCita: (id: string) => void;
   eliminarCita: (id: string) => void;
+  toastMessage: string | null;
+  showToast: (message: string) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -90,6 +92,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToastMessage(null), 2000);
+  };
+
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
@@ -97,6 +108,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       savePersistedData({ cliente, citas, vehicleTypeLabel, tamanoVehiculo });
+      showToast('Datos guardados correctamente');
     }, 300);
   }, [cliente, citas, vehicleTypeLabel, tamanoVehiculo]);
 
@@ -120,7 +132,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const paquetes = PAQUETES_POR_TAMANO[tamanoVehiculo];
 
   return (
-    <AppContext.Provider value={{ tamanoVehiculo, vehicleTypeLabel, setTamanoVehiculo, paquetes, cliente, setCliente, citas, agregarCita, cancelarCita, eliminarCita }}>
+    <AppContext.Provider value={{ tamanoVehiculo, vehicleTypeLabel, setTamanoVehiculo, paquetes, cliente, setCliente, citas, agregarCita, cancelarCita, eliminarCita, toastMessage, showToast }}>
       {children}
     </AppContext.Provider>
   );
