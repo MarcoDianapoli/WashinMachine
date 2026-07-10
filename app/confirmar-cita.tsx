@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { useState, useMemo } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, TextInput, Switch } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useApp } from '@/store';
@@ -18,6 +18,10 @@ export default function ConfirmarCitaScreen() {
 
   const paquete = paquetes.find((p) => p.id === paqueteId);
 
+  const tieneVehiculoRegistrado = !!cliente?.vehiculo?.modelo;
+  const [usarOtroVehiculo, setUsarOtroVehiculo] = useState(!tieneVehiculoRegistrado);
+  const [otroModelo, setOtroModelo] = useState('');
+
   const confirmarCita = () => {
     if (!cliente) {
       Alert.alert('Faltan datos', 'Primero configura tu información en la sección Perfil.', [
@@ -28,13 +32,22 @@ export default function ConfirmarCitaScreen() {
     }
     if (!paquete) return;
 
+    if (usarOtroVehiculo && !otroModelo.trim()) {
+      Alert.alert('Faltan datos', 'Por favor ingresa el modelo del auto a lavar.');
+      return;
+    }
+
+    const clienteAUsar = usarOtroVehiculo 
+      ? { ...cliente, vehiculo: { marca: 'Otro', modelo: otroModelo.trim(), placa: '', color: '' } }
+      : cliente;
+
     const nueva: Cita = {
       id: `cita-${Date.now()}`,
       paqueteId: paquete.id,
       paqueteNombre: paquete.nombre,
       fecha,
       hora,
-      cliente,
+      cliente: clienteAUsar,
       estado: 'pendiente',
     };
     agregarCita(nueva);
@@ -73,16 +86,45 @@ export default function ConfirmarCitaScreen() {
             <Text style={styles.fieldLabel}>Teléfono</Text>
             <Text style={styles.fieldValue}>{cliente.telefono}</Text>
             <View style={styles.divider} />
-            <Text style={styles.fieldLabel}>Vehículo</Text>
-            <Text style={styles.fieldValue}>
-              {cliente.vehiculo.marca} {cliente.vehiculo.modelo}
-            </Text>
-            <View style={styles.divider} />
-            <Text style={styles.fieldLabel}>Placa</Text>
-            <Text style={styles.fieldValue}>{cliente.vehiculo.placa || 'Sin registrar'}</Text>
-            <View style={styles.divider} />
-            <Text style={styles.fieldLabel}>Color</Text>
-            <Text style={styles.fieldValue}>{cliente.vehiculo.color || 'Sin registrar'}</Text>
+            
+            {tieneVehiculoRegistrado && (
+              <View style={styles.switchRow}>
+                <Text style={styles.fieldLabel}>Usar vehículo diferente</Text>
+                <Switch 
+                  value={usarOtroVehiculo} 
+                  onValueChange={setUsarOtroVehiculo}
+                  trackColor={{ false: theme.border, true: theme.primary }}
+                  thumbColor={'#fff'}
+                />
+              </View>
+            )}
+
+            {usarOtroVehiculo ? (
+              <View style={styles.otroVehiculoContainer}>
+                <Text style={styles.fieldLabel}>Modelo del auto a lavar *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ej. Jetta, Civic, etc."
+                  placeholderTextColor={theme.textMuted}
+                  value={otroModelo}
+                  onChangeText={setOtroModelo}
+                />
+              </View>
+            ) : (
+              <>
+                <Text style={styles.fieldLabel}>Vehículo Registrado</Text>
+                <Text style={styles.fieldValue}>
+                  {cliente.vehiculo.marca} {cliente.vehiculo.modelo}
+                </Text>
+                <View style={styles.divider} />
+                <Text style={styles.fieldLabel}>Placa</Text>
+                <Text style={styles.fieldValue}>{cliente.vehiculo.placa || 'Sin registrar'}</Text>
+                <View style={styles.divider} />
+                <Text style={styles.fieldLabel}>Color</Text>
+                <Text style={styles.fieldValue}>{cliente.vehiculo.color || 'Sin registrar'}</Text>
+              </>
+            )}
+
             {cliente.personaRecoge ? (
               <>
                 <View style={styles.divider} />
@@ -141,5 +183,8 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     buttonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
     buttonSecondary: { flex: 1, backgroundColor: theme.card, paddingVertical: 16, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: theme.border },
     buttonSecondaryText: { color: theme.text, fontSize: 16, fontWeight: 'bold' },
+    switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 8 },
+    otroVehiculoContainer: { marginTop: 10, padding: 12, backgroundColor: isDark ? '#2a2a2c' : '#f9fafb', borderRadius: 8, borderWidth: 1, borderColor: theme.border },
+    input: { backgroundColor: theme.card, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 8, fontSize: 16, marginTop: 8, borderWidth: 1, borderColor: theme.border, color: theme.text },
   });
 };
