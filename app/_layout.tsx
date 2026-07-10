@@ -1,7 +1,11 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
+import { useEffect } from 'react';
 import 'react-native-reanimated';
+
+import { Colors } from '@/constants/Colors';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AppProvider, useApp } from '@/store';
@@ -16,6 +20,11 @@ export const unstable_settings = {
 
 function RootNavigation() {
   const { tema } = useApp();
+
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(Colors[tema].background);
+  }, [tema]);
+
   return (
     <ThemeProvider value={tema === 'oscuro' ? DarkTheme : DefaultTheme}>
       <CarTransitionProvider>
