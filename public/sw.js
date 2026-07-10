@@ -1,4 +1,4 @@
-const CACHE_NAME = "autolavado-v1"
+const CACHE_NAME = "autolavado-v2"
 const STATIC_ASSETS = [
   "/",
   "/index.html",
