@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { useState, useEffect, useMemo } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/store';
+import { Colors } from '@/constants/Colors';
 
 export default function EditarDatosPersonalesScreen() {
   const router = useRouter();
-  const { cliente, setCliente, showToast } = useApp();
+  const { cliente, setCliente, showToast, tema } = useApp();
+  const theme = Colors[tema];
+  const styles = useMemo(() => getStyles(tema), [tema]);
   
   const [nombre, setNombre] = useState(cliente?.nombre ?? '');
   const [telefono, setTelefono] = useState(cliente?.telefono ?? '');
@@ -29,7 +32,6 @@ export default function EditarDatosPersonalesScreen() {
       return;
     }
     
-    // Mantenemos el vehículo intacto
     setCliente({ 
       ...cliente, 
       nombre, 
@@ -58,7 +60,7 @@ export default function EditarDatosPersonalesScreen() {
         <TextInput
           style={styles.input}
           placeholder="Nombre completo"
-          placeholderTextColor="#666"
+          placeholderTextColor={theme.textMuted}
           value={nombre}
           onChangeText={setNombre}
         />
@@ -67,7 +69,7 @@ export default function EditarDatosPersonalesScreen() {
         <TextInput
           style={styles.input}
           placeholder="Teléfono"
-          placeholderTextColor="#666"
+          placeholderTextColor={theme.textMuted}
           keyboardType="phone-pad"
           value={telefono}
           onChangeText={setTelefono}
@@ -77,7 +79,7 @@ export default function EditarDatosPersonalesScreen() {
         <TextInput
           style={styles.input}
           placeholder="Nombre (opcional)"
-          placeholderTextColor="#666"
+          placeholderTextColor={theme.textMuted}
           value={personaRecoge}
           onChangeText={setPersonaRecoge}
         />
@@ -86,7 +88,7 @@ export default function EditarDatosPersonalesScreen() {
         <TextInput
           style={styles.input}
           placeholder="Dirección (opcional)"
-          placeholderTextColor="#666"
+          placeholderTextColor={theme.textMuted}
           value={direccion}
           onChangeText={setDireccion}
         />
@@ -95,7 +97,7 @@ export default function EditarDatosPersonalesScreen() {
         <TextInput
           style={[styles.input, styles.textArea]}
           placeholder="Notas o preferencias (opcional)"
-          placeholderTextColor="#666"
+          placeholderTextColor={theme.textMuted}
           value={notas}
           onChangeText={setNotas}
           multiline
@@ -110,55 +112,58 @@ export default function EditarDatosPersonalesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' }, // Dark theme base
-  scrollContent: { paddingHorizontal: 20, paddingVertical: 40, flexGrow: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 40,
-    marginTop: 20,
-  },
-  backBtn: { padding: 10, position: 'absolute', zIndex: 1, left: -10 },
-  backText: { color: '#dc2626', fontSize: 16, fontWeight: '600' },
-  title: {
-    flex: 1,
-    fontSize: 22,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: '#fff',
-  },
-  label: { 
-    fontSize: 12, 
-    fontWeight: 'bold', 
-    color: '#999', 
-    marginBottom: 8, 
-    letterSpacing: 1 
-  },
-  input: {
-    backgroundColor: '#1c1c1e',
-    width: '100%',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    fontSize: 15,
-    marginBottom: 24,
-    color: '#fff',
-    borderWidth: 1,
-    borderColor: '#2c2c2e',
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  button: { 
-    backgroundColor: '#dc2626', 
-    width: '100%',
-    paddingVertical: 16, 
-    borderRadius: 8, 
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 30,
-  },
-  buttonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
-});
+const getStyles = (tema: 'claro' | 'oscuro') => {
+  const theme = Colors[tema];
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
+    scrollContent: { paddingHorizontal: 20, paddingVertical: 40, flexGrow: 1 },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 40,
+      marginTop: 20,
+    },
+    backBtn: { padding: 10, position: 'absolute', zIndex: 1, left: -10 },
+    backText: { color: theme.primary, fontSize: 16, fontWeight: '600' },
+    title: {
+      flex: 1,
+      fontSize: 22,
+      fontWeight: 'bold',
+      textAlign: 'center',
+      color: theme.text,
+    },
+    label: { 
+      fontSize: 12, 
+      fontWeight: 'bold', 
+      color: theme.textMuted, 
+      marginBottom: 8, 
+      letterSpacing: 1 
+    },
+    input: {
+      backgroundColor: theme.card,
+      width: '100%',
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      fontSize: 15,
+      marginBottom: 24,
+      color: theme.text,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    textArea: {
+      height: 100,
+      textAlignVertical: 'top',
+    },
+    button: { 
+      backgroundColor: theme.primary, 
+      width: '100%',
+      paddingVertical: 16, 
+      borderRadius: 8, 
+      alignItems: 'center',
+      marginTop: 10,
+      marginBottom: 30,
+    },
+    buttonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+  });
+};

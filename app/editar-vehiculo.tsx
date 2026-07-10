@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import type { Vehiculo } from '@/types';
 import { useApp } from '@/store';
+import { Colors } from '@/constants/Colors';
 
 interface MakeResult { Make_ID: number; Make_Name: string }
 interface ModelResult { Model_ID: number; Model_Name: string }
@@ -153,7 +154,9 @@ async function searchWikimedia(make: string, model: string, year: string | null)
 
 export default function EditarVehiculoScreen() {
   const router = useRouter();
-  const { setTamanoVehiculo, tamanoVehiculo, setCliente, cliente: storedCliente } = useApp();
+  const { setTamanoVehiculo, tamanoVehiculo, setCliente, cliente: storedCliente, tema } = useApp();
+  const theme = Colors[tema];
+  const styles = useMemo(() => getStyles(tema), [tema]);
   const [vehiculo, setVehiculo] = useState<Vehiculo>(storedCliente?.vehiculo ?? { placa: '', marca: '', modelo: '', color: '' });
 
   const [makes, setMakes] = useState<MakeResult[]>([]);
@@ -180,11 +183,6 @@ export default function EditarVehiculoScreen() {
 
   useEffect(() => {
     if (storedCliente) {
-      setNombre(storedCliente.nombre);
-      setTelefono(storedCliente.telefono);
-      setPersonaRecoge(storedCliente.personaRecoge ?? '');
-      setDireccion(storedCliente.direccion ?? '');
-      setNotas(storedCliente.notas ?? '');
       setVehiculo(storedCliente.vehiculo);
       if (storedCliente.vehiculo.anio) {
         setSelectedYear(storedCliente.vehiculo.anio);
@@ -580,70 +578,73 @@ export default function EditarVehiculoScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  scrollContent: { padding: 20, paddingBottom: 40, paddingTop: 40 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 30 },
-  backBtn: { padding: 10, position: 'absolute', zIndex: 1, left: -10 },
-  backText: { color: '#dc2626', fontSize: 16, fontWeight: '600' },
-  title: { flex: 1, fontSize: 22, fontWeight: 'bold', textAlign: 'center', color: '#fff' },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 16, marginTop: 8, color: '#fff' },
-  label: { fontSize: 12, fontWeight: 'bold', color: '#999', marginBottom: 8, letterSpacing: 1 },
-  input: { backgroundColor: '#1c1c1e', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, fontSize: 16, marginBottom: 16, borderWidth: 1, borderColor: '#2c2c2e', color: '#fff' },
-  pickerField: { backgroundColor: '#1c1c1e', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 10, marginBottom: 16, borderWidth: 1, borderColor: '#2c2c2e', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  pickerDisabled: { opacity: 0.5 },
-  pickerText: { fontSize: 16, color: '#fff' },
-  placeholder: { color: '#666' },
-  arrow: { fontSize: 12, color: '#999' },
-  arrowDisabled: { color: '#444' },
-  button: { backgroundColor: '#dc2626', paddingVertical: 16, borderRadius: 10, alignItems: 'center', marginTop: 8 },
-  buttonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
-  generateBtn: { backgroundColor: '#dc2626', paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginBottom: 16 },
-  generateBtnText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
-  changeBtn: { alignItems: 'center', marginBottom: 16 },
-  changeBtnText: { color: '#dc2626', fontSize: 14, fontWeight: '600' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#1c1c1e', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%', paddingBottom: 30 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingBottom: 0 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
-  modalClose: { fontSize: 16, color: '#dc2626', fontWeight: '600' },
-  searchInput: { backgroundColor: '#2c2c2e', margin: 16, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, fontSize: 16, color: '#fff' },
-  modalItem: { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#2c2c2e' },
-  modalItemText: { fontSize: 16, color: '#fff' },
-  emptyText: { textAlign: 'center', color: '#999', marginTop: 40, fontSize: 16 },
-  imageContainer: { alignItems: 'center', marginBottom: 12, minHeight: 160, justifyContent: 'center', width: '100%' },
-  imageWrapper: { width: '100%', alignItems: 'center' },
-  vehicleImage: { width: '100%', height: 200, borderRadius: 10, backgroundColor: '#1c1c1e' },
-  vehicleEmoji: { fontSize: 72, textAlign: 'center' },
-  resumenCard: { backgroundColor: '#1c1c1e', borderRadius: 10, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#2c2c2e' },
-  resumenRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 4 },
-  resumenLabel: { fontSize: 13, color: '#999', fontWeight: '600', width: 50 },
-  resumenValue: { fontSize: 14, color: '#fff', fontWeight: '500' },
-  typeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 },
-  typeLabel: { fontSize: 13, color: '#666', textTransform: 'capitalize', fontWeight: '600' },
-  sizeBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 },
-  sizeChico: { backgroundColor: '#fee2e2' },
-  sizeMediano: { backgroundColor: '#fecaca' },
-  sizeGrande: { backgroundColor: '#fef3c7' },
-  sizeMoto: { backgroundColor: '#fce7f3' },
-  sizeTrailer: { backgroundColor: '#fca5a5' },
-  sizeBadgeText: { fontSize: 11, fontWeight: '700' },
-  attribution: { fontSize: 10, color: '#999', textAlign: 'center', marginTop: 4, paddingHorizontal: 10 },
-  errorText: { fontSize: 13, color: '#dc2626', textAlign: 'center', marginTop: 8, paddingHorizontal: 16 },
-  navRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 16, gap: 16 },
-  navBtn: { paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#dc2626', borderRadius: 8 },
-  navBtnText: { color: 'white', fontSize: 14, fontWeight: '600' },
-  navCount: { fontSize: 14, color: '#ccc', fontWeight: '600' },
-  uploadHint: { fontSize: 11, color: '#999', marginTop: 4 },
-  manualOption: { padding: 16, borderTopWidth: 1, borderTopColor: '#2c2c2e', marginTop: 8 },
-  manualOptionText: { fontSize: 15, color: '#dc2626', fontWeight: '600', textAlign: 'center' },
-  manualRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
-  manualConfirm: { backgroundColor: '#dc2626', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10 },
-  manualConfirmText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
-  manualCancel: { paddingVertical: 10, paddingHorizontal: 12 },
-  manualCancelText: { color: '#999', fontSize: 14 },
-  uploadBtn: { alignItems: 'center', marginBottom: 16 },
-  uploadBtnText: { color: '#dc2626', fontSize: 14, fontWeight: '600' },
-  uploadBtnOutline: { borderWidth: 1.5, borderColor: '#dc2626', borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginBottom: 16, borderStyle: 'dashed' },
-  uploadBtnOutlineText: { color: '#dc2626', fontSize: 14, fontWeight: '600' },
-});
+const getStyles = (tema: 'claro' | 'oscuro') => {
+  const theme = Colors[tema];
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
+    scrollContent: { padding: 20, paddingBottom: 40, paddingTop: 40 },
+    headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 30 },
+    backBtn: { padding: 10, position: 'absolute', zIndex: 1, left: -10 },
+    backText: { color: theme.primary, fontSize: 16, fontWeight: '600' },
+    title: { flex: 1, fontSize: 22, fontWeight: 'bold', textAlign: 'center', color: theme.text },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 16, marginTop: 8, color: theme.text },
+    label: { fontSize: 12, fontWeight: 'bold', color: theme.textMuted, marginBottom: 8, letterSpacing: 1 },
+    input: { backgroundColor: theme.card, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, fontSize: 16, marginBottom: 16, borderWidth: 1, borderColor: theme.border, color: theme.text },
+    pickerField: { backgroundColor: theme.card, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 10, marginBottom: 16, borderWidth: 1, borderColor: theme.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    pickerDisabled: { opacity: 0.5 },
+    pickerText: { fontSize: 16, color: theme.text },
+    placeholder: { color: theme.textMuted },
+    arrow: { fontSize: 12, color: theme.textMuted },
+    arrowDisabled: { color: theme.textMuted },
+    button: { backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 10, alignItems: 'center', marginTop: 8 },
+    buttonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+    generateBtn: { backgroundColor: theme.primary, paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginBottom: 16 },
+    generateBtnText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+    changeBtn: { alignItems: 'center', marginBottom: 16 },
+    changeBtnText: { color: theme.primary, fontSize: 14, fontWeight: '600' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: theme.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%', paddingBottom: 30 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingBottom: 0 },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', color: theme.text },
+    modalClose: { fontSize: 16, color: theme.danger, fontWeight: '600' },
+    searchInput: { backgroundColor: theme.border, margin: 16, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, fontSize: 16, color: theme.text },
+    modalItem: { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.border },
+    modalItemText: { fontSize: 16, color: theme.text },
+    emptyText: { textAlign: 'center', color: theme.textMuted, marginTop: 40, fontSize: 16 },
+    imageContainer: { alignItems: 'center', marginBottom: 12, minHeight: 160, justifyContent: 'center', width: '100%' },
+    imageWrapper: { width: '100%', alignItems: 'center' },
+    vehicleImage: { width: '100%', height: 200, borderRadius: 10, backgroundColor: theme.card },
+    vehicleEmoji: { fontSize: 72, textAlign: 'center' },
+    resumenCard: { backgroundColor: theme.card, borderRadius: 10, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: theme.border },
+    resumenRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 4 },
+    resumenLabel: { fontSize: 13, color: theme.textMuted, fontWeight: '600', width: 50 },
+    resumenValue: { fontSize: 14, color: theme.text, fontWeight: '500' },
+    typeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 6 },
+    typeLabel: { fontSize: 13, color: theme.textMuted, textTransform: 'capitalize', fontWeight: '600' },
+    sizeBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 },
+    sizeChico: { backgroundColor: '#fee2e2' },
+    sizeMediano: { backgroundColor: '#fecaca' },
+    sizeGrande: { backgroundColor: '#fef3c7' },
+    sizeMoto: { backgroundColor: '#fce7f3' },
+    sizeTrailer: { backgroundColor: '#fca5a5' },
+    sizeBadgeText: { fontSize: 11, fontWeight: '700' },
+    attribution: { fontSize: 10, color: theme.textMuted, textAlign: 'center', marginTop: 4, paddingHorizontal: 10 },
+    errorText: { fontSize: 13, color: theme.danger, textAlign: 'center', marginTop: 8, paddingHorizontal: 16 },
+    navRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 16, gap: 16 },
+    navBtn: { paddingVertical: 8, paddingHorizontal: 16, backgroundColor: theme.primary, borderRadius: 8 },
+    navBtnText: { color: 'white', fontSize: 14, fontWeight: '600' },
+    navCount: { fontSize: 14, color: theme.textMuted, fontWeight: '600' },
+    uploadHint: { fontSize: 11, color: theme.textMuted, marginTop: 4 },
+    manualOption: { padding: 16, borderTopWidth: 1, borderTopColor: theme.border, marginTop: 8 },
+    manualOptionText: { fontSize: 15, color: theme.primary, fontWeight: '600', textAlign: 'center' },
+    manualRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+    manualConfirm: { backgroundColor: theme.primary, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10 },
+    manualConfirmText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
+    manualCancel: { paddingVertical: 10, paddingHorizontal: 12 },
+    manualCancelText: { color: theme.textMuted, fontSize: 14 },
+    uploadBtn: { alignItems: 'center', marginBottom: 16 },
+    uploadBtnText: { color: theme.primary, fontSize: 14, fontWeight: '600' },
+    uploadBtnOutline: { borderWidth: 1.5, borderColor: theme.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginBottom: 16, borderStyle: 'dashed' },
+    uploadBtnOutlineText: { color: theme.primary, fontSize: 14, fontWeight: '600' },
+  });
+};

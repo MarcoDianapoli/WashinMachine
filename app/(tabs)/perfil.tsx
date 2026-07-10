@@ -1,17 +1,22 @@
+import { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '@/store';
+import { Colors } from '@/constants/Colors';
 
 export default function PerfilMenuScreen() {
   const router = useRouter();
-  const { cliente, setCliente } = useApp();
+  const { cliente, setCliente, tema, toggleTema } = useApp();
 
   const handleLogout = () => {
     // Por el momento simplemente quitamos el cliente y vamos al login
     // setCliente(null); // Descomentar cuando quieras que se borre real la sesión
     router.replace('/login');
   };
+
+  const styles = useMemo(() => getStyles(tema), [tema]);
+  const isDark = tema === 'oscuro';
 
   return (
     <View style={styles.container}>
@@ -32,7 +37,7 @@ export default function PerfilMenuScreen() {
             </Text>
           </View>
           <View style={styles.qrContainer}>
-            <Ionicons name="qr-code-outline" size={24} color="#dc2626" />
+            <Ionicons name="qr-code-outline" size={24} color={Colors[tema].primary} />
           </View>
         </View>
 
@@ -44,6 +49,7 @@ export default function PerfilMenuScreen() {
             title="Datos Personales" 
             subtitle="Nombre, número de contacto, dirección"
             onPress={() => router.push('/editar-datos-personales')}
+            tema={tema}
           />
 
           <MenuItem 
@@ -51,6 +57,7 @@ export default function PerfilMenuScreen() {
             title="Mi Vehículo" 
             subtitle="Marca, modelo, placas, fotos"
             onPress={() => router.push('/editar-vehiculo')}
+            tema={tema}
           />
 
           <MenuItem 
@@ -58,6 +65,7 @@ export default function PerfilMenuScreen() {
             title="Historial de Citas" 
             subtitle="Revisar lavados pasados y recibos"
             onPress={() => {}}
+            tema={tema}
           />
 
           <MenuItem 
@@ -65,6 +73,7 @@ export default function PerfilMenuScreen() {
             title="Suscripciones" 
             subtitle="Explorar beneficios premium y paquetes"
             onPress={() => {}}
+            tema={tema}
           />
 
           <MenuItem 
@@ -72,13 +81,15 @@ export default function PerfilMenuScreen() {
             title="Notificaciones" 
             subtitle="Recordatorios de lavado y promociones"
             onPress={() => {}}
+            tema={tema}
           />
 
           <MenuItem 
-            icon="color-palette-outline" 
+            icon={isDark ? "sunny-outline" : "moon-outline"} 
             title="Apariencia" 
-            subtitle="Tema oscuro activado por defecto"
-            onPress={() => {}}
+            subtitle={`Tema actual: ${isDark ? 'Oscuro' : 'Claro'}`}
+            onPress={toggleTema}
+            tema={tema}
           />
 
           <MenuItem 
@@ -87,6 +98,7 @@ export default function PerfilMenuScreen() {
             subtitle="Salir de tu cuenta actual"
             onPress={handleLogout}
             isDestructive
+            tema={tema}
           />
 
         </View>
@@ -96,9 +108,11 @@ export default function PerfilMenuScreen() {
 }
 
 // Componente reutilizable para las opciones del menú
-function MenuItem({ icon, title, subtitle, onPress, isDestructive = false }: any) {
-  const color = isDestructive ? '#dc2626' : '#999';
-  const titleColor = isDestructive ? '#dc2626' : '#fff';
+function MenuItem({ icon, title, subtitle, onPress, isDestructive = false, tema }: any) {
+  const styles = useMemo(() => getStyles(tema), [tema]);
+  const themeColors = Colors[tema];
+  const color = isDestructive ? themeColors.danger : themeColors.textMuted;
+  const titleColor = isDestructive ? themeColors.danger : themeColors.text;
   
   return (
     <TouchableOpacity style={styles.menuItem} onPress={onPress}>
@@ -113,76 +127,78 @@ function MenuItem({ icon, title, subtitle, onPress, isDestructive = false }: any
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000', // Negro puro para fondo
-  },
-  scrollContent: {
-    paddingVertical: 20,
-  },
-  profileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1c1c1e', // Gris muy oscuro
-    marginBottom: 10,
-  },
-  avatarContainer: {
-    marginRight: 16,
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#1c1c1e',
-  },
-  profileInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  profileName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff', // Texto blanco
-    marginBottom: 4,
-  },
-  profileUsername: {
-    fontSize: 14,
-    color: '#888', // Gris medio
-  },
-  qrContainer: {
-    padding: 8,
-  },
-  menuSection: {
-    paddingTop: 10,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  menuIcon: {
-    width: 32,
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  menuTextContainer: {
-    flex: 1,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1c1c1e', // Divider color
-    paddingBottom: 16,
-  },
-  menuTitle: {
-    fontSize: 16,
-    color: '#fff',
-    marginBottom: 2,
-  },
-  menuSubtitle: {
-    fontSize: 13,
-    color: '#888',
-  },
-});
+const getStyles = (tema: 'claro' | 'oscuro') => {
+  const theme = Colors[tema];
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    scrollContent: {
+      paddingVertical: 20,
+    },
+    profileHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingBottom: 30,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+      marginBottom: 10,
+    },
+    avatarContainer: {
+      marginRight: 16,
+    },
+    avatar: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: theme.card,
+    },
+    profileInfo: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    profileName: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: theme.text,
+      marginBottom: 4,
+    },
+    profileUsername: {
+      fontSize: 14,
+      color: theme.textMuted,
+    },
+    qrContainer: {
+      padding: 8,
+    },
+    menuSection: {
+      paddingTop: 10,
+    },
+    menuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+    },
+    menuIcon: {
+      width: 32,
+      alignItems: 'center',
+      marginRight: 16,
+    },
+    menuTextContainer: {
+      flex: 1,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+      paddingBottom: 16,
+    },
+    menuTitle: {
+      fontSize: 16,
+      marginBottom: 2,
+    },
+    menuSubtitle: {
+      fontSize: 13,
+      color: theme.textMuted,
+    },
+  });
+};

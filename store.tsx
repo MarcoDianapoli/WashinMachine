@@ -45,6 +45,7 @@ interface PersistedData {
   citas: Cita[];
   vehicleTypeLabel: string | null;
   tamanoVehiculo: TamanoVehiculo;
+  tema: 'claro' | 'oscuro';
 }
 
 function vehicleTypeToTamano(type: string | null): TamanoVehiculo {
@@ -70,6 +71,8 @@ interface AppState {
   eliminarCita: (id: string) => void;
   toastMessage: string | null;
   showToast: (message: string) => void;
+  tema: 'claro' | 'oscuro';
+  toggleTema: () => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -79,6 +82,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [vehicleTypeLabel, setVehicleTypeLabel] = useState<string | null>(null);
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [citas, setCitas] = useState<Cita[]>([]);
+  const [tema, setTema] = useState<'claro' | 'oscuro'>('claro');
   const loaded = useRef(false);
 
   useEffect(() => {
@@ -88,6 +92,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (d.citas) setCitas(d.citas);
       if (d.vehicleTypeLabel) setVehicleTypeLabel(d.vehicleTypeLabel);
       if (d.tamanoVehiculo) setTamano(d.tamanoVehiculo);
+      if (d.tema) setTema(d.tema);
       loaded.current = true;
     });
   }, []);
@@ -107,10 +112,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!loaded.current) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      savePersistedData({ cliente, citas, vehicleTypeLabel, tamanoVehiculo });
-      showToast('Datos guardados correctamente');
+      savePersistedData({ cliente, citas, vehicleTypeLabel, tamanoVehiculo, tema });
+      // showToast('Datos guardados correctamente');
     }, 300);
-  }, [cliente, citas, vehicleTypeLabel, tamanoVehiculo]);
+  }, [cliente, citas, vehicleTypeLabel, tamanoVehiculo, tema]);
 
   const setTamanoVehiculo = (type: string | null) => {
     setVehicleTypeLabel(type);
@@ -131,8 +136,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const paquetes = PAQUETES_POR_TAMANO[tamanoVehiculo];
 
+  const toggleTema = () => {
+    setTema(prev => prev === 'claro' ? 'oscuro' : 'claro');
+  };
+
   return (
-    <AppContext.Provider value={{ tamanoVehiculo, vehicleTypeLabel, setTamanoVehiculo, paquetes, cliente, setCliente, citas, agregarCita, cancelarCita, eliminarCita, toastMessage, showToast }}>
+    <AppContext.Provider value={{ tamanoVehiculo, vehicleTypeLabel, setTamanoVehiculo, paquetes, cliente, setCliente, citas, agregarCita, cancelarCita, eliminarCita, toastMessage, showToast, tema, toggleTema }}>
       {children}
     </AppContext.Provider>
   );
