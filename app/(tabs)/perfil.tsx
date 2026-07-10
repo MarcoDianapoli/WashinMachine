@@ -109,7 +109,7 @@ function MenuItem({ icon, title, subtitle, onPress, isDestructive = false }: any
         <Text style={[styles.menuTitle, { color: titleColor }]}>{title}</Text>
         {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
