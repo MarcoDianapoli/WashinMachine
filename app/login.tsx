@@ -5,25 +5,34 @@ import { useApp } from '@/store';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { setCliente } = useApp();
+  const { setCliente, showToast } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mantenerSesion, setMantenerSesion] = useState(true);
 
   const iniciarSesion = () => {
-    if (!email.trim() || !password.trim()) return;
+    if (!email.trim() || !password.trim()) {
+      showToast('Por favor llena todos los campos');
+      return;
+    }
     
-    // Almacenamos el email en el campo "nombre" del store por el momento, 
-    // y asignamos un teléfono por defecto ya que el nuevo diseño no lo pide.
-    setCliente({ 
-      nombre: email.trim(), 
-      telefono: '0000000000', 
-      vehiculo: { placa: '', marca: '', modelo: '', color: '' }, 
-      personaRecoge: '', 
-      direccion: '', 
-      notas: '' 
-    });
-    router.replace('/(tabs)');
+    // Simulación de API / Validación local
+    if (email.trim().toLowerCase() === 'admin@test.com' && password === '123456') {
+      // Éxito: Guardamos el estado y navegamos
+      setCliente({ 
+        nombre: 'Admin Usuario', 
+        telefono: '0000000000', 
+        vehiculo: { placa: '', marca: '', modelo: '', color: '' }, 
+        personaRecoge: '', 
+        direccion: '', 
+        notas: '' 
+      });
+      showToast('Bienvenido');
+      router.replace('/(tabs)');
+    } else {
+      // Error
+      showToast('Credenciales incorrectas');
+    }
   };
 
   return (
@@ -88,7 +97,7 @@ export default function LoginScreen() {
           <Text style={styles.buttonText}>Iniciar Sesion</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => {}}>
+        <TouchableOpacity onPress={() => router.push('/register')}>
           <Text style={styles.footerText}>Crea una cuenta aqui</Text>
         </TouchableOpacity>
       </View>
