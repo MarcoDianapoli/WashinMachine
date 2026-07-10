@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, TextInput,
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useApp } from '@/store';
-import type { Cita } from '@/types';
+import type { Cita, Vehiculo } from '@/types';
 import { Colors } from '@/constants/Colors';
 
 export default function ConfirmarCitaScreen() {
@@ -15,12 +15,25 @@ export default function ConfirmarCitaScreen() {
   const router = useRouter();
   const { paquetes, cliente, agregarCita, tema } = useApp();
   const styles = useMemo(() => getStyles(tema), [tema]);
+  const theme = Colors[tema];
 
   const paquete = paquetes.find((p) => p.id === paqueteId);
 
-  const tieneVehiculoRegistrado = !!cliente?.vehiculo?.modelo;
+  const misVehiculos = cliente?.vehiculos || [];
+  const tieneVehiculoRegistrado = misVehiculos.length > 0;
+  
+  const [vehiculoSeleccionadoIdx, setVehiculoSeleccionadoIdx] = useState<number>(tieneVehiculoRegistrado ? 0 : -1);
   const [usarOtroVehiculo, setUsarOtroVehiculo] = useState(!tieneVehiculoRegistrado);
   const [otroModelo, setOtroModelo] = useState('');
+
+  const handleSwitch = (val: boolean) => {
+    setUsarOtroVehiculo(val);
+    if (val) {
+      setVehiculoSeleccionadoIdx(-1);
+    } else if (tieneVehiculoRegistrado) {
+      setVehiculoSeleccionadoIdx(0);
+    }
+  };
 
   const confirmarCita = () => {
     if (!cliente) {
@@ -37,9 +50,18 @@ export default function ConfirmarCitaScreen() {
       return;
     }
 
-    const clienteAUsar = usarOtroVehiculo 
-      ? { ...cliente, vehiculo: { marca: 'Otro', modelo: otroModelo.trim(), placa: '', color: '' } }
-      : cliente;
+    let vehiculoCita: Vehiculo;
+    if (usarOtroVehiculo) {
+      vehiculoCita = { marca: 'Otro', modelo: otroModelo.trim(), placa: '', color: '' };
+    } else {
+      if (vehiculoSeleccionadoIdx === -1 || !misVehiculos[vehiculoSeleccionadoIdx]) {
+        Alert.alert('Error', 'Selecciona un vehículo válido.');
+        return;
+      }
+      vehiculoCita = misVehiculos[vehiculoSeleccionadoIdx];
+    }
+
+    const clienteAUsar = { ...cliente, vehiculo: vehiculoCita };
 
     const nueva: Cita = {
       id: `cita-${Date.now()}`,
@@ -85,21 +107,41 @@ export default function ConfirmarCitaScreen() {
             <View style={styles.divider} />
             <Text style={styles.fieldLabel}>Teléfono</Text>
             <Text style={styles.fieldValue}>{cliente.telefono}</Text>
-            <View style={styles.divider} />
             
+            <View style={styles.divider} />
+            <Text style={styles.cardLabel}>VEHÍCULO A LAVAR</Text>
+            
+            {tieneVehiculoRegistrado && !usarOtroVehiculo && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 10 }}>
+                {misVehiculos.map((v, i) => {
+                  const isSelected = i === vehiculoSeleccionadoIdx;
+                  return (
+                    <TouchableOpacity 
+                      key={i} 
+                      onPress={() => setVehiculoSeleccionadoIdx(i)}
+                      style={[styles.vehiculoCard, isSelected && styles.vehiculoCardSelected]}
+                    >
+                      <Text style={[styles.vehiculoTitle, isSelected && styles.textWhite]}>{v.marca} {v.modelo}</Text>
+                      <Text style={[styles.vehiculoSub, isSelected && styles.textWhite]}>{v.placa || 'Sin placa'}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+
             {tieneVehiculoRegistrado && (
               <View style={styles.switchRow}>
-                <Text style={styles.fieldLabel}>Usar vehículo diferente</Text>
+                <Text style={styles.fieldLabel}>Usar un vehículo no registrado</Text>
                 <Switch 
                   value={usarOtroVehiculo} 
-                  onValueChange={setUsarOtroVehiculo}
+                  onValueChange={handleSwitch}
                   trackColor={{ false: theme.border, true: theme.primary }}
                   thumbColor={'#fff'}
                 />
               </View>
             )}
 
-            {usarOtroVehiculo ? (
+            {usarOtroVehiculo && (
               <View style={styles.otroVehiculoContainer}>
                 <Text style={styles.fieldLabel}>Modelo del auto a lavar *</Text>
                 <TextInput
@@ -110,19 +152,6 @@ export default function ConfirmarCitaScreen() {
                   onChangeText={setOtroModelo}
                 />
               </View>
-            ) : (
-              <>
-                <Text style={styles.fieldLabel}>Vehículo Registrado</Text>
-                <Text style={styles.fieldValue}>
-                  {cliente.vehiculo.marca} {cliente.vehiculo.modelo}
-                </Text>
-                <View style={styles.divider} />
-                <Text style={styles.fieldLabel}>Placa</Text>
-                <Text style={styles.fieldValue}>{cliente.vehiculo.placa || 'Sin registrar'}</Text>
-                <View style={styles.divider} />
-                <Text style={styles.fieldLabel}>Color</Text>
-                <Text style={styles.fieldValue}>{cliente.vehiculo.color || 'Sin registrar'}</Text>
-              </>
             )}
 
             {cliente.personaRecoge ? (
@@ -167,12 +196,12 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     content: { padding: 20, paddingBottom: 40 },
     title: { fontSize: 26, fontWeight: 'bold', marginBottom: 20, marginTop: 10, color: theme.text },
     card: { backgroundColor: theme.card, padding: 18, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: theme.border },
-    cardLabel: { fontSize: 11, color: theme.textMuted, letterSpacing: 1.5, marginBottom: 8 },
+    cardLabel: { fontSize: 11, color: theme.textMuted, letterSpacing: 1.5, marginBottom: 8, marginTop: 4 },
     cardTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 4, color: theme.text },
     cardPrice: { fontSize: 28, fontWeight: 'bold', color: theme.primary, marginBottom: 4 },
     cardValue: { fontSize: 18, fontWeight: '600', marginBottom: 2, color: theme.text },
     cardSub: { fontSize: 14, color: theme.textMuted, marginTop: 4 },
-    divider: { height: 1, backgroundColor: theme.border, marginVertical: 8 },
+    divider: { height: 1, backgroundColor: theme.border, marginVertical: 12 },
     fieldLabel: { fontSize: 12, color: theme.textMuted, marginBottom: 2 },
     fieldValue: { fontSize: 16, fontWeight: '500', color: theme.text },
     warningCard: { backgroundColor: isDark ? '#3f1515' : '#fef3c7', borderWidth: 1, borderColor: isDark ? theme.danger : '#f59e0b' },
@@ -185,6 +214,11 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     buttonSecondaryText: { color: theme.text, fontSize: 16, fontWeight: 'bold' },
     switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 8 },
     otroVehiculoContainer: { marginTop: 10, padding: 12, backgroundColor: isDark ? '#2a2a2c' : '#f9fafb', borderRadius: 8, borderWidth: 1, borderColor: theme.border },
-    input: { backgroundColor: theme.card, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 8, fontSize: 16, marginTop: 8, borderWidth: 1, borderColor: theme.border, color: theme.text },
+    input: { backgroundColor: theme.background, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 8, fontSize: 16, marginTop: 8, borderWidth: 1, borderColor: theme.border, color: theme.text },
+    vehiculoCard: { padding: 12, borderWidth: 1, borderColor: theme.border, borderRadius: 8, marginRight: 10, backgroundColor: theme.background, minWidth: 140 },
+    vehiculoCardSelected: { backgroundColor: theme.primary, borderColor: theme.primary },
+    vehiculoTitle: { fontSize: 16, fontWeight: 'bold', color: theme.text },
+    vehiculoSub: { fontSize: 12, color: theme.textMuted, marginTop: 4 },
+    textWhite: { color: '#ffffff' },
   });
 };

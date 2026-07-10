@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
-import { View, Text, Pressable, StyleSheet, Platform } from 'react-native'
-import { Brand } from '@/constants/theme'
+import { useState, useEffect, useMemo } from 'react'
+import { View, Text, Pressable, StyleSheet, Platform, Modal } from 'react-native'
+import { useApp } from '@/store'
+import { Colors } from '@/constants/Colors'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -8,6 +9,10 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function InstallBanner() {
+  const { tema } = useApp();
+  const theme = Colors[tema];
+  const styles = useMemo(() => getStyles(tema), [tema]);
+
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [visible, setVisible] = useState(false)
 
@@ -17,7 +22,8 @@ export function InstallBanner() {
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
-      setVisible(true)
+      // Mostrar el pop-up después de unos segundos
+      setTimeout(() => setVisible(true), 2000)
     }
 
     window.addEventListener('beforeinstallprompt', handler)
@@ -32,83 +38,100 @@ export function InstallBanner() {
     setDeferredPrompt(null)
   }
 
-  if (!visible) return null
-
   return (
-    <View style={styles.banner}>
-      <Text style={styles.title}>Instala la app</Text>
-      <Text style={styles.subtitle}>Acceso rápido desde tu pantalla de inicio</Text>
-      <View style={styles.actions}>
-        <Pressable onPress={() => setVisible(false)} style={styles.dismissBtn}>
-          <Text style={styles.dismissText}>Ahora no</Text>
-        </Pressable>
-        <Pressable onPress={handleInstall} style={styles.installBtn}>
-          <Text style={styles.installText}>Instalar</Text>
-        </Pressable>
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={styles.overlay}>
+        <View style={styles.popup}>
+          <Text style={styles.icon}>📱</Text>
+          <Text style={styles.title}>Instalar Autolavado</Text>
+          <Text style={styles.subtitle}>Instala nuestra app web en tu pantalla de inicio para un acceso rápido y experiencia de pantalla completa.</Text>
+          
+          <View style={styles.actions}>
+            <Pressable onPress={() => setVisible(false)} style={styles.dismissBtn}>
+              <Text style={styles.dismissText}>Ahora no</Text>
+            </Pressable>
+            <Pressable onPress={handleInstall} style={styles.installBtn}>
+              <Text style={styles.installText}>Instalar App</Text>
+            </Pressable>
+          </View>
+        </View>
       </View>
-    </View>
+    </Modal>
   )
 }
 
-const styles = StyleSheet.create({
-  banner: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: Brand.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingVertical: 20,
-    paddingHorizontal: 24,
-    paddingBottom: 36,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 16,
-    zIndex: 9998,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Brand.black,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: Brand.gray,
-    textAlign: 'center',
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  dismissBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Brand.border,
-    alignItems: 'center',
-  },
-  dismissText: {
-    color: Brand.gray,
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  installBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: Brand.red,
-    alignItems: 'center',
-  },
-  installText: {
-    color: Brand.white,
-    fontWeight: '600',
-    fontSize: 15,
-  },
-})
+const getStyles = (tema: 'claro' | 'oscuro') => {
+  const theme = Colors[tema];
+  return StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    popup: {
+      backgroundColor: theme.card,
+      borderRadius: 20,
+      padding: 24,
+      width: '100%',
+      maxWidth: 360,
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 16,
+      elevation: 10,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    icon: {
+      fontSize: 48,
+      marginBottom: 12,
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: 'bold',
+      color: theme.text,
+      textAlign: 'center',
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 15,
+      color: theme.textMuted,
+      textAlign: 'center',
+      lineHeight: 22,
+      marginBottom: 24,
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: 12,
+      width: '100%',
+    },
+    dismissBtn: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      alignItems: 'center',
+    },
+    dismissText: {
+      color: theme.textMuted,
+      fontWeight: '600',
+      fontSize: 16,
+    },
+    installBtn: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 12,
+      backgroundColor: theme.primary,
+      alignItems: 'center',
+    },
+    installText: {
+      color: 'white',
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
+  });
+};

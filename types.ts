@@ -18,7 +18,8 @@ export interface Vehiculo {
 export interface Cliente {
   nombre: string;
   telefono: string;
-  vehiculo: Vehiculo;
+  vehiculo?: Vehiculo; // Retenido por retrocompatibilidad temporal
+  vehiculos: Vehiculo[]; // Múltiples vehículos (hasta 3)
   personaRecoge: string;
   direccion?: string;
   notas?: string;

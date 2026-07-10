@@ -88,7 +88,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadPersistedData<PersistedData>().then((d) => {
       if (!d) return;
-      if (d.cliente) setCliente(d.cliente);
+      if (d.cliente) {
+        // Migración automática de 1 a varios vehículos
+        const c = d.cliente;
+        if (!c.vehiculos) {
+          c.vehiculos = c.vehiculo && c.vehiculo.modelo ? [c.vehiculo] : [];
+        }
+        setCliente(c);
+      }
       if (d.citas) setCitas(d.citas);
       if (d.vehicleTypeLabel) setVehicleTypeLabel(d.vehicleTypeLabel);
       if (d.tamanoVehiculo) setTamano(d.tamanoVehiculo);

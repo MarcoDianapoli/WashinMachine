@@ -157,7 +157,12 @@ export default function EditarVehiculoScreen() {
   const { setTamanoVehiculo, tamanoVehiculo, setCliente, cliente: storedCliente, tema } = useApp();
   const theme = Colors[tema];
   const styles = useMemo(() => getStyles(tema), [tema]);
-  const [vehiculo, setVehiculo] = useState<Vehiculo>(storedCliente?.vehiculo ?? { placa: '', marca: '', modelo: '', color: '' });
+  
+  const [viewMode, setViewMode] = useState<'list' | 'edit'>('list');
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+  const defaultVehiculo: Vehiculo = { placa: '', marca: '', modelo: '', color: '' };
+  const [vehiculo, setVehiculo] = useState<Vehiculo>(defaultVehiculo);
 
   const [makes, setMakes] = useState<MakeResult[]>([]);
   const [models, setModels] = useState<ModelResult[]>([]);
@@ -182,25 +187,32 @@ export default function EditarVehiculoScreen() {
   const [manualModelo, setManualModelo] = useState(false);
 
   useEffect(() => {
-    if (storedCliente) {
-      setVehiculo(storedCliente.vehiculo);
-      if (storedCliente.vehiculo.anio) {
-        setSelectedYear(storedCliente.vehiculo.anio);
-      }
-      if (storedCliente.vehiculo.imagenUri) {
-        const uri = storedCliente.vehiculo.imagenUri;
+    // Cuando entramos en modo edición, inicializamos los datos
+    if (viewMode === 'edit') {
+      if (vehiculo.anio) setSelectedYear(vehiculo.anio);
+      else setSelectedYear(null);
+      
+      if (vehiculo.imagenUri) {
+        const uri = vehiculo.imagenUri;
         if (uri.startsWith('file:')) {
           setUploadedImage(uri);
           setShowUploaded(true);
         } else {
           setSelectedImage({ dataUri: uri, attribution: '' });
+          setShowUploaded(false);
         }
+      } else {
+        setSelectedImage(null);
+        setShowUploaded(false);
       }
-      if (storedCliente.vehiculo.tipoVehiculo) {
-        setVehicleType(storedCliente.vehiculo.tipoVehiculo);
+      
+      if (vehiculo.tipoVehiculo) {
+        setVehicleType(vehiculo.tipoVehiculo);
+      } else {
+        setVehicleType(null);
       }
     }
-  }, [storedCliente]);
+  }, [viewMode, vehiculo]);
 
   useEffect(() => { setTamanoVehiculo(vehicleType); }, [vehicleType, setTamanoVehiculo]);
 
@@ -407,21 +419,101 @@ export default function EditarVehiculoScreen() {
       imagenUri: showUploaded && uploadedImage ? uploadedImage : selectedImage?.dataUri ?? undefined,
       tipoVehiculo: vehicleType ?? undefined,
     };
+    
+    const currentVehiculos = storedCliente?.vehiculos || [];
+    let nuevosVehiculos = [...currentVehiculos];
+    
+    if (editingIndex !== null && editingIndex >= 0 && editingIndex < nuevosVehiculos.length) {
+      nuevosVehiculos[editingIndex] = vehiculoActualizado;
+    } else {
+      nuevosVehiculos.push(vehiculoActualizado);
+    }
+
     setCliente({ 
-      ...(storedCliente ?? { nombre: '', telefono: '', personaRecoge: '', direccion: '', notas: '' }),
-      vehiculo: vehiculoActualizado 
+      ...(storedCliente ?? { nombre: '', telefono: '', personaRecoge: '', direccion: '', notas: '', vehiculos: [] }),
+      vehiculos: nuevosVehiculos 
     });
+    
     Alert.alert('Datos guardados', 'Tu información se ha actualizado correctamente.');
+    setViewMode('list');
   };
+
+  const eliminarVehiculo = (index: number) => {
+    Alert.alert('Eliminar vehículo', '¿Estás seguro de eliminar este vehículo?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: () => {
+          if (!storedCliente) return;
+          const nuevosVehiculos = [...(storedCliente.vehiculos || [])];
+          nuevosVehiculos.splice(index, 1);
+          setCliente({ ...storedCliente, vehiculos: nuevosVehiculos });
+      }}
+    ]);
+  };
+
+  if (viewMode === 'list') {
+    const misVehiculos = storedCliente?.vehiculos || [];
+    return (
+      <View style={[styles.container, { padding: 20, paddingTop: 40 }]}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <Text style={styles.backText}>← Volver</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Mis Vehículos</Text>
+        </View>
+
+        <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+          {misVehiculos.length === 0 ? (
+            <Text style={styles.emptyText}>No tienes vehículos registrados.</Text>
+          ) : (
+            misVehiculos.map((veh, index) => {
+              const tipoStr = veh.tipoVehiculo ? TYPE_EMOJI[matchBodyClass(veh.tipoVehiculo)] : DEFAULT_EMOJI;
+              return (
+                <View key={index} style={styles.resumenCard}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                    <Text style={{ fontSize: 32, marginRight: 10 }}>{tipoStr}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.text }}>
+                        {veh.marca} {veh.modelo}
+                      </Text>
+                      <Text style={{ fontSize: 14, color: theme.textMuted }}>
+                        Placa: {veh.placa || 'N/A'} • Color: {veh.color || 'N/A'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+                    <TouchableOpacity onPress={() => eliminarVehiculo(index)} style={{ padding: 8, backgroundColor: theme.danger + '20', borderRadius: 8 }}>
+                      <Text style={{ color: theme.danger, fontWeight: '600' }}>Eliminar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => { setVehiculo(veh); setEditingIndex(index); setViewMode('edit'); }} style={{ padding: 8, backgroundColor: theme.primary + '20', borderRadius: 8 }}>
+                      <Text style={{ color: theme.primary, fontWeight: '600' }}>Editar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })
+          )}
+
+          {misVehiculos.length < 3 && (
+            <TouchableOpacity 
+              style={[styles.button, { marginTop: 20 }]} 
+              onPress={() => { setVehiculo(defaultVehiculo); setEditingIndex(null); setViewMode('edit'); }}
+            >
+              <Text style={styles.buttonText}>+ Añadir Vehículo</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => setViewMode('list')}>
             <Text style={styles.backText}>← Volver</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Datos del Vehículo</Text>
+          <Text style={styles.title}>{editingIndex !== null ? 'Editar Vehículo' : 'Nuevo Vehículo'}</Text>
         </View>
 
         <Text style={styles.sectionTitle}>Vehículo</Text>

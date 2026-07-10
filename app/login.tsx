@@ -26,7 +26,7 @@ export default function LoginScreen() {
       setCliente({ 
         nombre: 'Admin Usuario', 
         telefono: '0000000000', 
-        vehiculo: { placa: '', marca: '', modelo: '', color: '' }, 
+        vehiculos: [], 
         personaRecoge: '', 
         direccion: '', 
         notas: '' 
