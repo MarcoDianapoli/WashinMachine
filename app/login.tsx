@@ -1,17 +1,28 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Switch, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/store';
 
 export default function LoginScreen() {
   const router = useRouter();
   const { setCliente } = useApp();
-  const [nombre, setNombre] = useState('');
-  const [telefono, setTelefono] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [mantenerSesion, setMantenerSesion] = useState(true);
 
   const iniciarSesion = () => {
-    if (!nombre.trim() || !telefono.trim()) return;
-    setCliente({ nombre: nombre.trim(), telefono: telefono.trim(), vehiculo: { placa: '', marca: '', modelo: '', color: '' }, personaRecoge: '', direccion: '', notas: '' });
+    if (!email.trim() || !password.trim()) return;
+    
+    // Almacenamos el email en el campo "nombre" del store por el momento, 
+    // y asignamos un teléfono por defecto ya que el nuevo diseño no lo pide.
+    setCliente({ 
+      nombre: email.trim(), 
+      telefono: '0000000000', 
+      vehiculo: { placa: '', marca: '', modelo: '', color: '' }, 
+      personaRecoge: '', 
+      direccion: '', 
+      notas: '' 
+    });
     router.replace('/(tabs)');
   };
 
@@ -21,27 +32,64 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.content}>
-        <Text style={styles.title}>Autolavado</Text>
-        <Text style={styles.subtitle}>Inicia sesión para continuar</Text>
+        
+        <View style={styles.logoContainer}>
+          {/* 
+            IMPORTANTE: 
+            Asegúrate de guardar el logo que pasaste en la carpeta:
+            assets/images/logo.png
+          */}
+          <Image 
+            source={require('../assets/images/logo.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+
+        <Text style={styles.label}>EMAIL</Text>
         <TextInput
           style={styles.input}
-          placeholder="Nombre completo"
-          value={nombre}
-          onChangeText={setNombre}
+          placeholder="hello@reallygreatsite.com"
+          placeholderTextColor="#aaa"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          textAlign="center"
         />
+
+        <Text style={styles.label}>CONTRASEÑA</Text>
         <TextInput
           style={styles.input}
-          placeholder="Número de contacto"
-          keyboardType="phone-pad"
-          value={telefono}
-          onChangeText={setTelefono}
+          placeholder="••••••••"
+          placeholderTextColor="#aaa"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          textAlign="center"
         />
+
+        <View style={styles.switchContainer}>
+          <Text style={styles.switchLabel}>Mantener Sesion Iniciada</Text>
+          <Switch
+            trackColor={{ false: '#d1d1d1', true: '#dc2626' }}
+            thumbColor={Platform.OS === 'ios' ? '#fff' : '#fff'}
+            ios_backgroundColor="#d1d1d1"
+            onValueChange={setMantenerSesion}
+            value={mantenerSesion}
+          />
+        </View>
+
         <TouchableOpacity
-          style={[styles.button, (!nombre.trim() || !telefono.trim()) && styles.buttonDisabled]}
+          style={[styles.button, (!email.trim() || !password.trim()) && styles.buttonDisabled]}
           onPress={iniciarSesion}
-          disabled={!nombre.trim() || !telefono.trim()}
+          disabled={!email.trim() || !password.trim()}
         >
-          <Text style={styles.buttonText}>Entrar</Text>
+          <Text style={styles.buttonText}>Iniciar Sesion</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => {}}>
+          <Text style={styles.footerText}>Crea una cuenta aqui</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -49,21 +97,83 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', backgroundColor: '#f5f5f5' },
-  content: { paddingHorizontal: 30 },
-  title: { fontSize: 32, fontWeight: 'bold', textAlign: 'center', marginBottom: 8, color: '#dc2626' },
-  subtitle: { fontSize: 16, textAlign: 'center', marginBottom: 40, color: '#666' },
-  input: {
-    backgroundColor: 'white',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 10,
-    fontSize: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
+  container: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    backgroundColor: '#fff' 
   },
-  button: { backgroundColor: '#dc2626', paddingVertical: 16, borderRadius: 10, alignItems: 'center' },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+  content: { 
+    paddingHorizontal: 30, 
+    alignItems: 'center' 
+  },
+  logoContainer: {
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    borderWidth: 1,
+    borderColor: '#eaeaea',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 40,
+    backgroundColor: '#fff',
+    // Sombra para iOS
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    // Elevación para Android
+    elevation: 4,
+  },
+  logo: {
+    width: 140,
+    height: 140,
+  },
+  label: { 
+    fontSize: 12, 
+    fontWeight: 'bold', 
+    color: '#999', 
+    marginBottom: 8, 
+    letterSpacing: 1 
+  },
+  input: {
+    backgroundColor: '#f2f2f2',
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 6,
+    fontSize: 14,
+    marginBottom: 20,
+    color: '#333',
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 30,
+    width: '100%',
+  },
+  switchLabel: {
+    fontSize: 13,
+    color: '#666',
+    marginRight: 10,
+  },
+  button: { 
+    backgroundColor: '#e62222', 
+    width: '100%',
+    paddingVertical: 16, 
+    borderRadius: 6, 
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  buttonDisabled: { 
+    opacity: 0.5 
+  },
+  buttonText: { 
+    color: 'white', 
+    fontSize: 16, 
+    fontWeight: 'bold' 
+  },
+  footerText: {
+    fontSize: 13,
+    color: '#999',
+  },
 });
