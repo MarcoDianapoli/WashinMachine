@@ -20,7 +20,10 @@ export function InstallBanner() {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return
 
     // Evitar mostrarlo si ya fue descartado
-    const dismissed = localStorage.getItem('pwa-prompt-dismissed')
+    let dismissed = 'false'
+    try {
+      dismissed = localStorage.getItem('pwa-prompt-dismissed') || 'false'
+    } catch (e) {}
     if (dismissed === 'true') return
 
     const handler = (e: Event) => {
@@ -43,7 +46,9 @@ export function InstallBanner() {
 
   const handleDismiss = () => {
     setVisible(false)
-    if (Platform.OS === 'web') localStorage.setItem('pwa-prompt-dismissed', 'true')
+    if (Platform.OS === 'web') {
+      try { localStorage.setItem('pwa-prompt-dismissed', 'true') } catch(e) {}
+    }
   }
 
   const handleInstall = async () => {
@@ -52,19 +57,23 @@ export function InstallBanner() {
       const { outcome } = await deferredPrompt.userChoice
       if (outcome === 'accepted') {
         setVisible(false)
-        if (Platform.OS === 'web') localStorage.setItem('pwa-prompt-dismissed', 'true')
+        if (Platform.OS === 'web') {
+          try { localStorage.setItem('pwa-prompt-dismissed', 'true') } catch(e) {}
+        }
       }
       setDeferredPrompt(null)
     } else {
       // Fallback si no hay prompt nativo disponible
       alert('Para instalar la aplicación:\n\n1. Abre el menú de tu navegador (los 3 puntos o Compartir).\n2. Selecciona "Agregar a la pantalla de inicio" o "Instalar aplicación".');
       setVisible(false)
-      if (Platform.OS === 'web') localStorage.setItem('pwa-prompt-dismissed', 'true')
+      if (Platform.OS === 'web') {
+        try { localStorage.setItem('pwa-prompt-dismissed', 'true') } catch(e) {}
+      }
     }
   }
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal visible={visible} transparent>
       <View style={styles.overlay}>
         <View style={styles.popup}>
           <Text style={styles.icon}>📱</Text>
