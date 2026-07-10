@@ -19,23 +19,48 @@ export function InstallBanner() {
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return
 
+    // Evitar mostrarlo si ya fue descartado
+    const dismissed = localStorage.getItem('pwa-prompt-dismissed')
+    if (dismissed === 'true') return
+
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
-      // Mostrar el pop-up después de unos segundos
-      setTimeout(() => setVisible(true), 2000)
     }
 
     window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+
+    // Mostrar el pop-up incondicionalmente después de 2 segundos (si no se ha descartado)
+    const timer = setTimeout(() => {
+      setVisible(true)
+    }, 2000)
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler)
+      clearTimeout(timer)
+    }
   }, [])
 
+  const handleDismiss = () => {
+    setVisible(false)
+    if (Platform.OS === 'web') localStorage.setItem('pwa-prompt-dismissed', 'true')
+  }
+
   const handleInstall = async () => {
-    if (!deferredPrompt) return
-    await deferredPrompt.prompt()
-    const { outcome } = await deferredPrompt.userChoice
-    if (outcome === 'accepted') setVisible(false)
-    setDeferredPrompt(null)
+    if (deferredPrompt) {
+      await deferredPrompt.prompt()
+      const { outcome } = await deferredPrompt.userChoice
+      if (outcome === 'accepted') {
+        setVisible(false)
+        if (Platform.OS === 'web') localStorage.setItem('pwa-prompt-dismissed', 'true')
+      }
+      setDeferredPrompt(null)
+    } else {
+      // Fallback si no hay prompt nativo disponible
+      alert('Para instalar la aplicación:\n\n1. Abre el menú de tu navegador (los 3 puntos o Compartir).\n2. Selecciona "Agregar a la pantalla de inicio" o "Instalar aplicación".');
+      setVisible(false)
+      if (Platform.OS === 'web') localStorage.setItem('pwa-prompt-dismissed', 'true')
+    }
   }
 
   return (
@@ -47,7 +72,7 @@ export function InstallBanner() {
           <Text style={styles.subtitle}>Instala nuestra app web en tu pantalla de inicio para un acceso rápido y experiencia de pantalla completa.</Text>
           
           <View style={styles.actions}>
-            <Pressable onPress={() => setVisible(false)} style={styles.dismissBtn}>
+            <Pressable onPress={handleDismiss} style={styles.dismissBtn}>
               <Text style={styles.dismissText}>Ahora no</Text>
             </Pressable>
             <Pressable onPress={handleInstall} style={styles.installBtn}>
