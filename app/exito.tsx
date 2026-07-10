@@ -1,9 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useApp } from '@/store';
+import { Colors } from '@/constants/Colors';
 
 export default function ExitoScreen() {
   const router = useRouter();
+  const { tema } = useApp();
+  const styles = useMemo(() => getStyles(tema), [tema]);
+  
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -43,11 +48,14 @@ export default function ExitoScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5', padding: 30 },
-  checkCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#10b981', justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
-  checkMark: { fontSize: 48, color: 'white', fontWeight: 'bold', marginTop: -4 },
-  title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 8 },
-  subtitle: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 24 },
-  redirect: { fontSize: 14, color: '#999', textAlign: 'center' },
-});
+const getStyles = (tema: 'claro' | 'oscuro') => {
+  const theme = Colors[tema];
+  return StyleSheet.create({
+    container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background, padding: 30 },
+    checkCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: theme.success, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
+    checkMark: { fontSize: 48, color: 'white', fontWeight: 'bold', marginTop: -4 },
+    title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 8, color: theme.text },
+    subtitle: { fontSize: 16, color: theme.textMuted, textAlign: 'center', marginBottom: 24 },
+    redirect: { fontSize: 14, color: theme.textMuted, textAlign: 'center' },
+  });
+};

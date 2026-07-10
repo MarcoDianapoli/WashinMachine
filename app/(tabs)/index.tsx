@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, Modal, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown, FadeInUp, BounceIn } from 'react-native-reanimated';
 import { useApp } from '@/store';
 import type { Cita } from '@/types';
+import { Colors } from '@/constants/Colors';
 
 const ESTADO_COLOR: Record<string, string> = {
   pendiente: '#f59e0b',
@@ -19,7 +20,7 @@ const ESTADO_LABEL: Record<string, string> = {
   cancelada: 'Cancelada',
 };
 
-function CitaCard({ item, index, onPress }: { item: Cita; index: number; onPress: (c: Cita) => void }) {
+function CitaCard({ item, index, onPress, theme, styles }: any) {
   return (
     <Animated.View entering={FadeInDown.delay(index * 100).springify()}>
       <TouchableOpacity style={styles.card} onPress={() => onPress(item)} activeOpacity={0.8}>
@@ -40,7 +41,10 @@ function CitaCard({ item, index, onPress }: { item: Cita; index: number; onPress
 
 export default function MisCitasScreen() {
   const router = useRouter();
-  const { citas, cancelarCita, eliminarCita } = useApp();
+  const { citas, cancelarCita, eliminarCita, tema } = useApp();
+  const theme = Colors[tema];
+  const styles = useMemo(() => getStyles(tema), [tema]);
+  
   const [citaSeleccionada, setCitaSeleccionada] = useState<Cita | null>(null);
 
   const confirmarCancelar = () => {
@@ -100,7 +104,7 @@ export default function MisCitasScreen() {
           keyExtractor={(c) => c.id}
           contentContainerStyle={styles.list}
           renderItem={({ item, index }) => (
-            <CitaCard item={item} index={index} onPress={setCitaSeleccionada} />
+            <CitaCard item={item} index={index} onPress={setCitaSeleccionada} theme={theme} styles={styles} />
           )}
         />
       )}
@@ -179,52 +183,57 @@ export default function MisCitasScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 20 },
-  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 20, marginTop: 10 },
-  list: { gap: 12, paddingBottom: 100 },
-  card: { backgroundColor: 'white', padding: 16, borderRadius: 10 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  cardTitle: { fontSize: 16, fontWeight: 'bold' },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  badgeText: { fontSize: 12, fontWeight: '600' },
-  cardDate: { fontSize: 14, color: '#666' },
-  cardClient: { fontSize: 12, color: '#999', marginTop: 4 },
-  empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { fontSize: 18, fontWeight: '600', color: '#666' },
-  emptySubtext: { fontSize: 14, color: '#999', marginTop: 8, textAlign: 'center' },
-  footer: { position: 'absolute', bottom: 20, left: 20, right: 20 },
-  nuevaCitaButton: {
-    flexDirection: 'row',
-    backgroundColor: '#dc2626',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    elevation: 6,
-    shadowColor: '#dc2626',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  nuevaCitaIcon: { fontSize: 24, fontWeight: 'bold', color: 'white' },
-  nuevaCitaText: { fontSize: 18, fontWeight: 'bold', color: 'white' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  modalTitle: { fontSize: 22, fontWeight: 'bold', flex: 1 },
-  modalClose: { fontSize: 16, color: '#dc2626', fontWeight: '600' },
-  detailSection: { marginBottom: 16 },
-  statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 14 },
-  statusText: { fontSize: 14, fontWeight: '700' },
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  detailLabel: { fontSize: 14, color: '#666' },
-  detailValue: { fontSize: 14, color: '#111', fontWeight: '600', flex: 1, textAlign: 'right' },
-  actions: { gap: 10, marginTop: 24 },
-  cancelButton: { backgroundColor: '#fef3c7', paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
-  cancelButtonText: { color: '#92400e', fontSize: 16, fontWeight: '700' },
-  deleteButton: { backgroundColor: '#fef2f2', paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
-  deleteButtonText: { color: '#dc2626', fontSize: 16, fontWeight: '700' },
-});
+const getStyles = (tema: 'claro' | 'oscuro') => {
+  const theme = Colors[tema];
+  const isDark = tema === 'oscuro';
+  
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background, padding: 20 },
+    title: { fontSize: 28, fontWeight: 'bold', marginBottom: 20, marginTop: 10, color: theme.text },
+    list: { gap: 12, paddingBottom: 100 },
+    card: { backgroundColor: theme.card, padding: 16, borderRadius: 10, borderWidth: 1, borderColor: theme.border },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    cardTitle: { fontSize: 16, fontWeight: 'bold', color: theme.text },
+    badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+    badgeText: { fontSize: 12, fontWeight: '600' },
+    cardDate: { fontSize: 14, color: theme.textMuted },
+    cardClient: { fontSize: 12, color: theme.textMuted, marginTop: 4 },
+    empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    emptyText: { fontSize: 18, fontWeight: '600', color: theme.textMuted },
+    emptySubtext: { fontSize: 14, color: theme.textMuted, marginTop: 8, textAlign: 'center' },
+    footer: { position: 'absolute', bottom: 20, left: 20, right: 20 },
+    nuevaCitaButton: {
+      flexDirection: 'row',
+      backgroundColor: theme.primary,
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      elevation: 6,
+      shadowColor: theme.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+    },
+    nuevaCitaIcon: { fontSize: 24, fontWeight: 'bold', color: 'white' },
+    nuevaCitaText: { fontSize: 18, fontWeight: 'bold', color: 'white' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: theme.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    modalTitle: { fontSize: 22, fontWeight: 'bold', flex: 1, color: theme.text },
+    modalClose: { fontSize: 16, color: theme.danger, fontWeight: '600' },
+    detailSection: { marginBottom: 16 },
+    statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 14 },
+    statusText: { fontSize: 14, fontWeight: '700' },
+    detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.border },
+    detailLabel: { fontSize: 14, color: theme.textMuted },
+    detailValue: { fontSize: 14, color: theme.text, fontWeight: '600', flex: 1, textAlign: 'right' },
+    actions: { gap: 10, marginTop: 24 },
+    cancelButton: { backgroundColor: isDark ? '#3f1515' : '#fef3c7', paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
+    cancelButtonText: { color: isDark ? '#fca5a5' : '#92400e', fontSize: 16, fontWeight: '700' },
+    deleteButton: { backgroundColor: isDark ? '#3f1515' : '#fef2f2', paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
+    deleteButtonText: { color: theme.danger, fontSize: 16, fontWeight: '700' },
+  });
+};

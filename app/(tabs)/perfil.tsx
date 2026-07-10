@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '@/store';
@@ -85,11 +85,19 @@ export default function PerfilMenuScreen() {
           />
 
           <MenuItem 
-            icon={isDark ? "sunny-outline" : "moon-outline"} 
-            title="Apariencia" 
-            subtitle={`Tema actual: ${isDark ? 'Oscuro' : 'Claro'}`}
-            onPress={toggleTema}
+            icon={isDark ? "moon-outline" : "sunny-outline"} 
+            title="Modo Oscuro" 
+            subtitle="Cambiar apariencia de la app"
+            onPress={() => {}} // Disabled click since we have switch
             tema={tema}
+            rightElement={
+              <Switch 
+                value={isDark} 
+                onValueChange={toggleTema}
+                trackColor={{ false: '#767577', true: Colors[tema].primary }}
+                thumbColor={'#fff'}
+              />
+            }
           />
 
           <MenuItem 
@@ -108,20 +116,25 @@ export default function PerfilMenuScreen() {
 }
 
 // Componente reutilizable para las opciones del menú
-function MenuItem({ icon, title, subtitle, onPress, isDestructive = false, tema }: any) {
+function MenuItem({ icon, title, subtitle, onPress, isDestructive = false, tema, rightElement }: any) {
   const styles = useMemo(() => getStyles(tema), [tema]);
   const themeColors = Colors[tema];
   const color = isDestructive ? themeColors.danger : themeColors.textMuted;
   const titleColor = isDestructive ? themeColors.danger : themeColors.text;
   
   return (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+    <TouchableOpacity style={styles.menuItem} onPress={rightElement ? undefined : onPress} disabled={!!rightElement}>
       <View style={styles.menuIcon}>
         <Ionicons name={icon} size={24} color={color} />
       </View>
       <View style={styles.menuTextContainer}>
-        <Text style={[styles.menuTitle, { color: titleColor }]}>{title}</Text>
-        {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
+        <View style={styles.menuTextRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.menuTitle, { color: titleColor }]}>{title}</Text>
+            {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
+          </View>
+          {rightElement && <View>{rightElement}</View>}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -200,5 +213,10 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       fontSize: 13,
       color: theme.textMuted,
     },
+    menuTextRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    }
   });
 };

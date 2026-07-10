@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { Horario } from '@/types';
 import { useApp } from '@/store';
+import { Colors } from '@/constants/Colors';
 
 const HORARIOS: Horario[] = [
   { id: '1', hora: '09:00', disponible: true },
@@ -22,7 +23,8 @@ export default function HorariosScreen() {
   const router = useRouter();
   const [diaSeleccionado, setDiaSeleccionado] = useState<string>('2026-06-08');
   const [horarioSeleccionado, setHorarioSeleccionado] = useState<string | null>(null);
-  const { paquetes } = useApp();
+  const { paquetes, tema } = useApp();
+  const styles = useMemo(() => getStyles(tema), [tema]);
 
   const paquete = paquetes.find((p) => p.id === paqueteId);
 
@@ -109,41 +111,46 @@ export default function HorariosScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#f5f5f5' },
-  paqueteInfo: { backgroundColor: 'white', padding: 16, borderRadius: 10, marginBottom: 20 },
-  paqueteNombre: { fontSize: 20, fontWeight: 'bold' },
-  paqueteDetalle: { fontSize: 14, color: '#666', marginTop: 4 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 12, color: '#333' },
-  diasContainer: { gap: 10, marginBottom: 24 },
-  diaCard: {
-    backgroundColor: 'white',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  diaCardActivo: { backgroundColor: '#dc2626', borderColor: '#dc2626' },
-  diaText: { fontSize: 14, fontWeight: '600', color: '#333' },
-  diaTextActivo: { color: 'white' },
-  horariosContainer: { gap: 10, marginBottom: 24 },
-  horarioCard: {
-    flex: 1,
-    backgroundColor: 'white',
-    margin: 5,
-    paddingVertical: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  horarioNoDisponible: { backgroundColor: '#f0f0f0', borderColor: '#e0e0e0' },
-  horarioSeleccionado: { backgroundColor: '#dc2626', borderColor: '#dc2626' },
-  horarioText: { fontSize: 16, fontWeight: '600', color: '#333' },
-  horarioTextNoDisponible: { color: '#bbb' },
-  horarioTextSeleccionado: { color: 'white' },
-  button: { backgroundColor: '#dc2626', paddingVertical: 16, borderRadius: 10, alignItems: 'center' },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
-});
+const getStyles = (tema: 'claro' | 'oscuro') => {
+  const theme = Colors[tema];
+  const isDark = tema === 'oscuro';
+  
+  return StyleSheet.create({
+    container: { flex: 1, padding: 20, backgroundColor: theme.background },
+    paqueteInfo: { backgroundColor: theme.card, padding: 16, borderRadius: 10, marginBottom: 20, borderWidth: 1, borderColor: theme.border },
+    paqueteNombre: { fontSize: 20, fontWeight: 'bold', color: theme.text },
+    paqueteDetalle: { fontSize: 14, color: theme.textMuted, marginTop: 4 },
+    sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 12, color: theme.text },
+    diasContainer: { gap: 10, marginBottom: 24 },
+    diaCard: {
+      backgroundColor: theme.card,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    diaCardActivo: { backgroundColor: theme.primary, borderColor: theme.primary },
+    diaText: { fontSize: 14, fontWeight: '600', color: theme.text },
+    diaTextActivo: { color: 'white' },
+    horariosContainer: { gap: 10, marginBottom: 24 },
+    horarioCard: {
+      flex: 1,
+      backgroundColor: theme.card,
+      margin: 5,
+      paddingVertical: 16,
+      borderRadius: 10,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    horarioNoDisponible: { backgroundColor: isDark ? '#1a1a1a' : '#f0f0f0', borderColor: isDark ? '#222' : '#e0e0e0' },
+    horarioSeleccionado: { backgroundColor: theme.primary, borderColor: theme.primary },
+    horarioText: { fontSize: 16, fontWeight: '600', color: theme.text },
+    horarioTextNoDisponible: { color: theme.textMuted },
+    horarioTextSeleccionado: { color: 'white' },
+    button: { backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 10, alignItems: 'center' },
+    buttonDisabled: { opacity: 0.5 },
+    buttonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+  });
+};

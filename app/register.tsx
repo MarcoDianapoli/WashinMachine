@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/store';
+import { Colors } from '@/constants/Colors';
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { showToast } = useApp();
+  const { showToast, tema } = useApp();
+  const theme = Colors[tema];
+  const styles = useMemo(() => getStyles(tema), [tema]);
   
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
@@ -48,7 +51,7 @@ export default function RegisterScreen() {
         <TextInput
           style={styles.input}
           placeholder="Jia Ranjan"
-          placeholderTextColor="#aaa"
+          placeholderTextColor={theme.textMuted}
           value={nombre}
           onChangeText={setNombre}
           textAlign="center"
@@ -58,7 +61,7 @@ export default function RegisterScreen() {
         <TextInput
           style={styles.input}
           placeholder="hello@reallygreatsite.com"
-          placeholderTextColor="#aaa"
+          placeholderTextColor={theme.textMuted}
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -70,7 +73,7 @@ export default function RegisterScreen() {
         <TextInput
           style={styles.input}
           placeholder="••••••••"
-          placeholderTextColor="#aaa"
+          placeholderTextColor={theme.textMuted}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -81,7 +84,7 @@ export default function RegisterScreen() {
         <TextInput
           style={styles.input}
           placeholder="••••••••"
-          placeholderTextColor="#aaa"
+          placeholderTextColor={theme.textMuted}
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           secureTextEntry
@@ -100,74 +103,79 @@ export default function RegisterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#fff' 
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 30, 
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: '#000',
-    marginBottom: 10,
-    width: '70%',
-    lineHeight: 34,
-  },
-  loginLinkContainer: {
-    flexDirection: 'row',
-  },
-  loginText: {
-    fontSize: 13,
-    color: '#888',
-  },
-  loginLink: {
-    fontSize: 13,
-    color: '#666',
-    textDecorationLine: 'underline',
-  },
-  label: { 
-    fontSize: 12, 
-    fontWeight: 'bold', 
-    color: '#999', 
-    marginBottom: 8, 
-    letterSpacing: 1 
-  },
-  input: {
-    backgroundColor: '#f2f2f2',
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: 6,
-    fontSize: 14,
-    marginBottom: 20,
-    color: '#333',
-  },
-  button: { 
-    backgroundColor: '#e62222', 
-    width: '100%',
-    paddingVertical: 16, 
-    borderRadius: 6, 
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  buttonDisabled: { 
-    opacity: 0.5 
-  },
-  buttonText: { 
-    color: 'white', 
-    fontSize: 16, 
-    fontWeight: 'bold' 
-  },
-});
+const getStyles = (tema: 'claro' | 'oscuro') => {
+  const theme = Colors[tema];
+  return StyleSheet.create({
+    container: { 
+      flex: 1, 
+      backgroundColor: theme.background 
+    },
+    scrollContent: {
+      flexGrow: 1,
+      paddingHorizontal: 30, 
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: 40,
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: 40,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      textAlign: 'center',
+      color: theme.text,
+      marginBottom: 10,
+      width: '70%',
+      lineHeight: 34,
+    },
+    loginLinkContainer: {
+      flexDirection: 'row',
+    },
+    loginText: {
+      fontSize: 13,
+      color: theme.textMuted,
+    },
+    loginLink: {
+      fontSize: 13,
+      color: theme.primary,
+      textDecorationLine: 'underline',
+    },
+    label: { 
+      fontSize: 12, 
+      fontWeight: 'bold', 
+      color: theme.textMuted, 
+      marginBottom: 8, 
+      letterSpacing: 1 
+    },
+    input: {
+      backgroundColor: theme.card,
+      width: '100%',
+      paddingVertical: 14,
+      borderRadius: 6,
+      fontSize: 14,
+      marginBottom: 20,
+      color: theme.text,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    button: { 
+      backgroundColor: theme.primary, 
+      width: '100%',
+      paddingVertical: 16, 
+      borderRadius: 6, 
+      alignItems: 'center',
+      marginTop: 10,
+      marginBottom: 20,
+    },
+    buttonDisabled: { 
+      opacity: 0.5 
+    },
+    buttonText: { 
+      color: 'white', 
+      fontSize: 16, 
+      fontWeight: 'bold' 
+    },
+  });
+};

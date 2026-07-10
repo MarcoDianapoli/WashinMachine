@@ -1,11 +1,15 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Switch, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/store';
+import { Colors } from '@/constants/Colors';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { setCliente, showToast } = useApp();
+  const { setCliente, showToast, tema } = useApp();
+  const theme = Colors[tema];
+  const styles = useMemo(() => getStyles(tema), [tema]);
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mantenerSesion, setMantenerSesion] = useState(true);
@@ -59,7 +63,7 @@ export default function LoginScreen() {
         <TextInput
           style={styles.input}
           placeholder="hello@reallygreatsite.com"
-          placeholderTextColor="#aaa"
+          placeholderTextColor={theme.textMuted}
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -71,7 +75,7 @@ export default function LoginScreen() {
         <TextInput
           style={styles.input}
           placeholder="••••••••"
-          placeholderTextColor="#aaa"
+          placeholderTextColor={theme.textMuted}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -81,7 +85,7 @@ export default function LoginScreen() {
         <View style={styles.switchContainer}>
           <Text style={styles.switchLabel}>Mantener Sesion Iniciada</Text>
           <Switch
-            trackColor={{ false: '#d1d1d1', true: '#dc2626' }}
+            trackColor={{ false: '#d1d1d1', true: theme.primary }}
             thumbColor={Platform.OS === 'ios' ? '#fff' : '#fff'}
             ios_backgroundColor="#d1d1d1"
             onValueChange={setMantenerSesion}
@@ -105,84 +109,78 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    backgroundColor: '#fff' 
-  },
-  content: { 
-    paddingHorizontal: 30, 
-    alignItems: 'center' 
-  },
-  logoContainer: {
-    width: 170,
-    height: 170,
-    borderRadius: 85,
-    borderWidth: 1,
-    borderColor: '#eaeaea',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 40,
-    backgroundColor: '#fff',
-    // Sombra para iOS
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    // Elevación para Android
-    elevation: 4,
-  },
-  logo: {
-    width: 140,
-    height: 140,
-  },
-  label: { 
-    fontSize: 12, 
-    fontWeight: 'bold', 
-    color: '#999', 
-    marginBottom: 8, 
-    letterSpacing: 1 
-  },
-  input: {
-    backgroundColor: '#f2f2f2',
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: 6,
-    fontSize: 14,
-    marginBottom: 20,
-    color: '#333',
-  },
-  switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 30,
-    width: '100%',
-  },
-  switchLabel: {
-    fontSize: 13,
-    color: '#666',
-    marginRight: 10,
-  },
-  button: { 
-    backgroundColor: '#e62222', 
-    width: '100%',
-    paddingVertical: 16, 
-    borderRadius: 6, 
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  buttonDisabled: { 
-    opacity: 0.5 
-  },
-  buttonText: { 
-    color: 'white', 
-    fontSize: 16, 
-    fontWeight: 'bold' 
-  },
-  footerText: {
-    fontSize: 13,
-    color: '#999',
-  },
-});
+const getStyles = (tema: 'claro' | 'oscuro') => {
+  const theme = Colors[tema];
+  return StyleSheet.create({
+    container: { 
+      flex: 1, 
+      justifyContent: 'center', 
+      backgroundColor: theme.background 
+    },
+    content: { 
+      paddingHorizontal: 30, 
+      alignItems: 'center' 
+    },
+    logoContainer: {
+      width: 170,
+      height: 170,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    logo: {
+      width: 170,
+      height: 170,
+    },
+    label: { 
+      fontSize: 12, 
+      fontWeight: 'bold', 
+      color: theme.textMuted, 
+      marginBottom: 8, 
+      letterSpacing: 1 
+    },
+    input: {
+      backgroundColor: theme.card,
+      width: '100%',
+      paddingVertical: 14,
+      borderRadius: 6,
+      fontSize: 14,
+      marginBottom: 20,
+      color: theme.text,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    switchContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 30,
+      width: '100%',
+    },
+    switchLabel: {
+      fontSize: 13,
+      color: theme.textMuted,
+      marginRight: 10,
+    },
+    button: { 
+      backgroundColor: theme.primary, 
+      width: '100%',
+      paddingVertical: 16, 
+      borderRadius: 6, 
+      alignItems: 'center',
+      marginBottom: 30,
+    },
+    buttonDisabled: { 
+      opacity: 0.5 
+    },
+    buttonText: { 
+      color: 'white', 
+      fontSize: 16, 
+      fontWeight: 'bold' 
+    },
+    footerText: {
+      fontSize: 13,
+      color: theme.textMuted,
+    },
+  });
+};
