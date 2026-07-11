@@ -186,33 +186,26 @@ export default function EditarVehiculoScreen() {
   const [manualMarca, setManualMarca] = useState(false);
   const [manualModelo, setManualModelo] = useState(false);
 
-  useEffect(() => {
-    // Cuando entramos en modo edición, inicializamos los datos
-    if (viewMode === 'edit') {
-      if (vehiculo.anio) setSelectedYear(vehiculo.anio);
-      else setSelectedYear(null);
-      
-      if (vehiculo.imagenUri) {
-        const uri = vehiculo.imagenUri;
-        if (uri.startsWith('file:')) {
-          setUploadedImage(uri);
-          setShowUploaded(true);
-        } else {
-          setSelectedImage({ dataUri: uri, attribution: '' });
-          setShowUploaded(false);
-        }
+  const enterEditMode = useCallback((veh: Vehiculo, index: number | null) => {
+    setVehiculo(veh);
+    setEditingIndex(index);
+    setSelectedYear(veh.anio ?? null);
+    if (veh.imagenUri) {
+      if (veh.imagenUri.startsWith('file:')) {
+        setUploadedImage(veh.imagenUri);
+        setShowUploaded(true);
       } else {
-        setSelectedImage(null);
+        setSelectedImage({ dataUri: veh.imagenUri, attribution: '' });
         setShowUploaded(false);
       }
-      
-      if (vehiculo.tipoVehiculo) {
-        setVehicleType(vehiculo.tipoVehiculo);
-      } else {
-        setVehicleType(null);
-      }
+    } else {
+      setSelectedImage(null);
+      setShowUploaded(false);
     }
-  }, [viewMode, vehiculo]);
+    setVehicleType(veh.tipoVehiculo ?? null);
+    setWikiResult(null);
+    setViewMode('edit');
+  }, []);
 
   useEffect(() => { setTamanoVehiculo(vehicleType); }, [vehicleType, setTamanoVehiculo]);
 
@@ -387,14 +380,21 @@ export default function EditarVehiculoScreen() {
 
   const selectYear = useCallback((year: string) => {
     setSelectedYear(year);
-    if (selectedMakeId) fetchModels(selectedMakeId, year);
     setModalConfig((p) => ({ ...p, visible: false }));
-  }, [selectedMakeId, fetchModels]);
+    // Si ya tenemos marca y modelo, actualizamos la búsqueda de imagen
+    if (vehiculo.marca && vehiculo.modelo) {
+      triggerSearch(vehiculo.marca, vehiculo.modelo, year);
+    } else if (selectedMakeId) {
+      // Si no tenemos modelo, buscamos los modelos filtrados por ese año
+      fetchModels(selectedMakeId, year);
+    }
+  }, [selectedMakeId, fetchModels, vehiculo.marca, vehiculo.modelo, triggerSearch]);
 
   const selectModel = useCallback((m: ModelResult) => {
     setVehiculo((prev) => ({ ...prev, modelo: m.Model_Name }));
-    setModalConfig((p) => ({ ...p, visible: false }));
     triggerSearch(vehiculo.marca, m.Model_Name, selectedYear);
+    // Después de seleccionar modelo, pasamos a seleccionar año
+    setModalConfig({ visible: true, mode: 'año' });
   }, [vehiculo.marca, selectedYear, triggerSearch]);
 
   const filteredItems = useMemo(() => {
@@ -484,7 +484,7 @@ export default function EditarVehiculoScreen() {
                     <TouchableOpacity onPress={() => eliminarVehiculo(index)} style={{ padding: 8, backgroundColor: theme.danger + '20', borderRadius: 8 }}>
                       <Text style={{ color: theme.danger, fontWeight: '600' }}>Eliminar</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => { setVehiculo(veh); setEditingIndex(index); setViewMode('edit'); }} style={{ padding: 8, backgroundColor: theme.primary + '20', borderRadius: 8 }}>
+                    <TouchableOpacity onPress={() => enterEditMode(veh, index)} style={{ padding: 8, backgroundColor: theme.primary + '20', borderRadius: 8 }}>
                       <Text style={{ color: theme.primary, fontWeight: '600' }}>Editar</Text>
                     </TouchableOpacity>
                   </View>
@@ -496,7 +496,7 @@ export default function EditarVehiculoScreen() {
           {misVehiculos.length < 3 && (
             <TouchableOpacity 
               style={[styles.button, { marginTop: 20 }]} 
-              onPress={() => { setVehiculo(defaultVehiculo); setEditingIndex(null); setViewMode('edit'); }}
+              onPress={() => enterEditMode(defaultVehiculo, null)}
             >
               <Text style={styles.buttonText}>+ Añadir Vehículo</Text>
             </TouchableOpacity>
