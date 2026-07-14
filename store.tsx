@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import type { Cliente, Cita, Vehiculo } from '@/types';
+import type { Cliente, Cita, Vehiculo, AuthUser } from '@/types';
 import { loadPersistedData, savePersistedData } from '@/lib/storage';
 
 export type TamanoVehiculo = 'chico' | 'mediano' | 'grande' | 'moto' | 'trailer';
@@ -46,6 +46,7 @@ interface PersistedData {
   vehicleTypeLabel: string | null;
   tamanoVehiculo: TamanoVehiculo;
   tema: 'claro' | 'oscuro';
+  authUser?: AuthUser | null;
 }
 
 function vehicleTypeToTamano(type: string | null): TamanoVehiculo {
@@ -73,6 +74,13 @@ interface AppState {
   showToast: (message: string) => void;
   tema: 'claro' | 'oscuro';
   toggleTema: () => void;
+  authUser: AuthUser | null;
+  loginLavador: (codigo: string) => boolean;
+  logout: () => void;
+  actualizarPerfilLavador: (datos: { telefono?: string; fotoPerfil?: string }) => void;
+  tomarCita: (id: string) => void;
+  terminarCita: (id: string) => void;
+  entregarCita: (id: string) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -83,6 +91,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [citas, setCitas] = useState<Cita[]>([]);
   const [tema, setTema] = useState<'claro' | 'oscuro'>('claro');
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const loaded = useRef(false);
 
   useEffect(() => {
@@ -100,6 +109,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (d.vehicleTypeLabel) setVehicleTypeLabel(d.vehicleTypeLabel);
       if (d.tamanoVehiculo) setTamano(d.tamanoVehiculo);
       if (d.tema) setTema(d.tema);
+      if (d.authUser !== undefined) setAuthUser(d.authUser);
       loaded.current = true;
     });
   }, []);
@@ -119,10 +129,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!loaded.current) return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      savePersistedData({ cliente, citas, vehicleTypeLabel, tamanoVehiculo, tema });
+      savePersistedData({ cliente, citas, vehicleTypeLabel, tamanoVehiculo, tema, authUser });
       // showToast('Datos guardados correctamente');
     }, 300);
-  }, [cliente, citas, vehicleTypeLabel, tamanoVehiculo, tema]);
+  }, [cliente, citas, vehicleTypeLabel, tamanoVehiculo, tema, authUser]);
 
   const setTamanoVehiculo = (type: string | null) => {
     setVehicleTypeLabel(type);
@@ -141,6 +151,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCitas((prev) => prev.filter((c) => c.id !== id));
   };
 
+  const loginLavador = (codigo: string) => {
+    if (codigo.toLowerCase().startsWith('lavador')) {
+      setAuthUser({
+        id: `lav_${Date.now()}`,
+        email: 'lavador@monkey.com',
+        rol: 'lavador',
+        nombre: 'Lavador',
+      });
+      return true;
+    }
+    return false;
+  };
+
+  const logout = () => {
+    setAuthUser(null);
+  };
+
+  const actualizarPerfilLavador = (datos: { telefono?: string; fotoPerfil?: string }) => {
+    setAuthUser(prev => {
+      if (!prev) return prev;
+      return { ...prev, ...datos };
+    });
+  };
+
+  const tomarCita = (id: string) => {
+    setCitas((prev) => prev.map((c) => (c.id === id ? { ...c, estado: 'en_proceso' } : c)));
+  };
+
+  const terminarCita = (id: string) => {
+    setCitas((prev) => prev.map((c) => (c.id === id ? { ...c, estado: 'listo_entrega' } : c)));
+  };
+
+  const entregarCita = (id: string) => {
+    setCitas((prev) => prev.map((c) => (c.id === id ? { ...c, estado: 'completada' } : c)));
+  };
+
   const paquetes = PAQUETES_POR_TAMANO[tamanoVehiculo];
 
   const toggleTema = () => {
@@ -148,7 +194,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AppContext.Provider value={{ tamanoVehiculo, vehicleTypeLabel, setTamanoVehiculo, paquetes, cliente, setCliente, citas, agregarCita, cancelarCita, eliminarCita, toastMessage, showToast, tema, toggleTema }}>
+    <AppContext.Provider value={{ tamanoVehiculo, vehicleTypeLabel, setTamanoVehiculo, paquetes, cliente, setCliente, citas, agregarCita, cancelarCita, eliminarCita, toastMessage, showToast, tema, toggleTema, authUser, loginLavador, logout, actualizarPerfilLavador, tomarCita, terminarCita, entregarCita }}>
       {children}
     </AppContext.Provider>
   );

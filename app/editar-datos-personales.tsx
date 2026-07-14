@@ -33,10 +33,11 @@ export default function EditarDatosPersonalesScreen() {
     }
     
     setCliente({ 
-      ...cliente, 
+      ...(cliente as any),
       nombre, 
       telefono, 
-      vehiculo: cliente?.vehiculo || { placa: '', marca: '', modelo: '', color: '' }, 
+      vehiculo: cliente?.vehiculo || { placa: '', marca: '', modelo: '', color: '' },
+      vehiculos: cliente?.vehiculos || [],
       personaRecoge, 
       direccion, 
       notas 

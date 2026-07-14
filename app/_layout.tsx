@@ -34,6 +34,7 @@ function RootNavigation() {
           <Stack.Screen name="editar-datos-personales" options={{ headerShown: false }} />
           <Stack.Screen name="editar-vehiculo" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="lavador" options={{ headerShown: false }} />
           <Stack.Screen name="horarios" options={{ title: 'Seleccionar horario' }} />
           <Stack.Screen name="confirmar-cita" options={{ title: 'Confirmar cita' }} />
           <Stack.Screen name="exito" options={{ headerShown: false }} />

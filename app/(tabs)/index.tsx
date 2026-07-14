@@ -33,7 +33,7 @@ function CitaCard({ item, index, onPress, theme, styles }: any) {
           </View>
         </View>
         <Text style={styles.cardDate}>{item.fecha} — {item.hora}</Text>
-        <Text style={styles.cardClient}>{item.cliente.nombre} • {item.cliente.vehiculo.placa || 'sin placa'}</Text>
+        <Text style={styles.cardClient}>{item.cliente.nombre} • {item.cliente.vehiculo?.placa || item.cliente.vehiculos?.[0]?.placa || 'sin placa'}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -159,8 +159,8 @@ export default function MisCitasScreen() {
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Vehículo</Text>
                   <Text style={styles.detailValue}>
-                    {citaSeleccionada.cliente.vehiculo.marca} {citaSeleccionada.cliente.vehiculo.modelo}
-                    {citaSeleccionada.cliente.vehiculo.placa ? ` · ${citaSeleccionada.cliente.vehiculo.placa}` : ''}
+                    {citaSeleccionada.cliente.vehiculo?.marca || citaSeleccionada.cliente.vehiculos?.[0]?.marca} {citaSeleccionada.cliente.vehiculo?.modelo || citaSeleccionada.cliente.vehiculos?.[0]?.modelo}
+                    {(citaSeleccionada.cliente.vehiculo?.placa || citaSeleccionada.cliente.vehiculos?.[0]?.placa) ? ` · ${citaSeleccionada.cliente.vehiculo?.placa || citaSeleccionada.cliente.vehiculos?.[0]?.placa}` : ''}
                   </Text>
                 </View>
 

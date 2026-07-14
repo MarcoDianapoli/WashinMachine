@@ -38,5 +38,14 @@ export interface Cita {
   fecha: string;
   hora: string;
   cliente: Cliente;
-  estado: 'pendiente' | 'confirmada' | 'completada' | 'cancelada';
+  estado: 'pendiente' | 'confirmada' | 'completada' | 'cancelada' | 'en_proceso' | 'listo_entrega';
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  rol: 'admin' | 'lavador' | 'cliente';
+  nombre: string;
+  telefono?: string;
+  fotoPerfil?: string;
 }

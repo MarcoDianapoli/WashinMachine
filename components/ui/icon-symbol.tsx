@@ -21,6 +21,7 @@ const MAPPING = {
   'car.fill': 'directions-car',
   'calendar': 'calendar-today',
   'person.fill': 'person',
+  'list.bullet': 'list',
 } as IconMapping;
 
 /**

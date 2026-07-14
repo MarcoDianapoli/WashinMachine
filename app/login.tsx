@@ -6,7 +6,7 @@ import { Colors } from '@/constants/Colors';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { setCliente, showToast, tema } = useApp();
+  const { setCliente, showToast, tema, loginLavador } = useApp();
   const theme = Colors[tema];
   const styles = useMemo(() => getStyles(tema), [tema]);
   
@@ -20,8 +20,17 @@ export default function LoginScreen() {
       return;
     }
     
-    // Simulación de API / Validación local
-    if (email.trim().toLowerCase() === 'admin@test.com' && password === '123456') {
+    const userEmail = email.trim().toLowerCase();
+    
+    // Validación de lavador
+    if ((userEmail === 'admin@monkey.com' || userEmail === 'admin@test.com') && loginLavador(password)) {
+      showToast('Bienvenido al área de lavadores');
+      router.replace('/lavador');
+      return;
+    }
+
+    // Simulación de API / Validación local cliente
+    if (userEmail === 'admin@test.com' && password === '123456') {
       // Éxito: Guardamos el estado y navegamos
       setCliente({ 
         nombre: 'Admin Usuario', 
