@@ -1,48 +1,84 @@
-import { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
+import { useState, useMemo, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import type { Horario } from '@/types';
 import { useApp } from '@/store';
 import { Colors } from '@/constants/Colors';
+import { getAvailabilityApi, ApiAvailabilitySlot } from '@/lib/api';
 
-const HORARIOS: Horario[] = [
-  { id: '1', hora: '09:00', disponible: true },
-  { id: '2', hora: '10:00', disponible: true },
-  { id: '3', hora: '11:00', disponible: false },
-  { id: '4', hora: '12:00', disponible: true },
-  { id: '5', hora: '13:00', disponible: false },
-  { id: '6', hora: '14:00', disponible: true },
-  { id: '7', hora: '15:00', disponible: true },
-  { id: '8', hora: '16:00', disponible: true },
-  { id: '9', hora: '17:00', disponible: false },
-  { id: '10', hora: '18:00', disponible: true },
-];
+function buildDays(count: number) {
+  const days: { label: string; value: string }[] = [];
+  const today = new Date();
+  for (let i = 0; i < count; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+    const dayName = d.toLocaleDateString('es-MX', { weekday: 'short' });
+    const dayNum = d.getDate();
+    days.push({
+      label: `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${dayNum < 10 ? '0' + dayNum : dayNum}`,
+      value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+    });
+  }
+  return days;
+}
 
 export default function HorariosScreen() {
   const { paqueteId } = useLocalSearchParams<{ paqueteId: string }>();
   const router = useRouter();
-  const [diaSeleccionado, setDiaSeleccionado] = useState<string>('2026-06-08');
-  const [horarioSeleccionado, setHorarioSeleccionado] = useState<string | null>(null);
-  const { paquetes, tema } = useApp();
+  const { paquetes, tema, authUser } = useApp();
   const styles = useMemo(() => getStyles(tema), [tema]);
+  const theme = Colors[tema];
 
   const paquete = paquetes.find((p) => p.id === paqueteId);
 
-  const dias = [
-    { label: 'Lun 08', value: '2026-06-08' },
-    { label: 'Mar 09', value: '2026-06-09' },
-    { label: 'Mié 10', value: '2026-06-10' },
-    { label: 'Jue 11', value: '2026-06-11' },
-    { label: 'Vie 12', value: '2026-06-12' },
-  ];
+  const dias = useMemo(() => buildDays(5), []);
+  const [diaSeleccionado, setDiaSeleccionado] = useState<string>(dias[0]?.value || '');
+  const [horarioSeleccionado, setHorarioSeleccionado] = useState<string | null>(null);
+
+  const [slots, setSlots] = useState<ApiAvailabilitySlot[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState<boolean>(true);
+
+  // Consulta de disponibilidad real en tiempo real desde la API (como en la app web)
+  useEffect(() => {
+    if (!diaSeleccionado) return;
+    let cancelled = false;
+    setLoadingSlots(true);
+
+    getAvailabilityApi(diaSeleccionado)
+      .then((res) => {
+        if (!cancelled) {
+          setSlots(res);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          // Fallback de horarios en caso de fallo de red
+          setSlots([
+            { time: '09:00', taken: 0, capacity: 2, available: true },
+            { time: '10:00', taken: 0, capacity: 2, available: true },
+            { time: '11:00', taken: 2, capacity: 2, available: false },
+            { time: '12:00', taken: 0, capacity: 2, available: true },
+            { time: '13:00', taken: 2, capacity: 2, available: false },
+            { time: '14:00', taken: 0, capacity: 2, available: true },
+            { time: '15:00', taken: 0, capacity: 2, available: true },
+            { time: '16:00', taken: 0, capacity: 2, available: true },
+            { time: '17:00', taken: 2, capacity: 2, available: false },
+            { time: '18:00', taken: 0, capacity: 2, available: true },
+          ]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingSlots(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [diaSeleccionado]);
 
   const confirmar = () => {
     if (!horarioSeleccionado || !paqueteId) return;
-    const slot = HORARIOS.find((h) => h.id === horarioSeleccionado);
-    if (!slot) return;
     router.push({
       pathname: '/confirmar-cita',
-      params: { paqueteId, fecha: diaSeleccionado, hora: slot.hora },
+      params: { paqueteId, fecha: diaSeleccionado, hora: horarioSeleccionado },
     });
   };
 
@@ -59,10 +95,14 @@ export default function HorariosScreen() {
         data={dias}
         keyExtractor={(d) => d.value}
         contentContainerStyle={styles.diasContainer}
+        showsHorizontalScrollIndicator={false}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={[styles.diaCard, diaSeleccionado === item.value && styles.diaCardActivo]}
-            onPress={() => { setDiaSeleccionado(item.value); setHorarioSeleccionado(null); }}
+            onPress={() => {
+              setDiaSeleccionado(item.value);
+              setHorarioSeleccionado(null);
+            }}
           >
             <Text style={[styles.diaText, diaSeleccionado === item.value && styles.diaTextActivo]}>
               {item.label}
@@ -72,33 +112,46 @@ export default function HorariosScreen() {
       />
 
       <Text style={styles.sectionTitle}>Horarios disponibles</Text>
-      <FlatList
-        data={HORARIOS}
-        keyExtractor={(h) => h.id}
-        numColumns={3}
-        contentContainerStyle={styles.horariosContainer}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[
-              styles.horarioCard,
-              !item.disponible && styles.horarioNoDisponible,
-              horarioSeleccionado === item.id && styles.horarioSeleccionado,
-            ]}
-            onPress={() => item.disponible && setHorarioSeleccionado(item.id)}
-            disabled={!item.disponible}
-          >
-            <Text
+
+      {loadingSlots ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={{ color: theme.textMuted, marginTop: 8 }}>Consultando disponibilidad...</Text>
+        </View>
+      ) : slots.length === 0 ? (
+        <Text style={{ color: theme.textMuted, marginBottom: 20 }}>
+          No pudimos consultar los horarios. Intenta de nuevo en un momento.
+        </Text>
+      ) : (
+        <FlatList
+          data={slots}
+          keyExtractor={(h) => h.time}
+          numColumns={3}
+          contentContainerStyle={styles.horariosContainer}
+          renderItem={({ item }) => (
+            <TouchableOpacity
               style={[
-                styles.horarioText,
-                !item.disponible && styles.horarioTextNoDisponible,
-                horarioSeleccionado === item.id && styles.horarioTextSeleccionado,
+                styles.horarioCard,
+                !item.available && styles.horarioNoDisponible,
+                horarioSeleccionado === item.time && styles.horarioSeleccionado,
               ]}
+              onPress={() => item.available && setHorarioSeleccionado(item.time)}
+              disabled={!item.available}
             >
-              {item.hora}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
+              <Text
+                style={[
+                  styles.horarioText,
+                  !item.available && styles.horarioTextNoDisponible,
+                  horarioSeleccionado === item.time && styles.horarioTextSeleccionado,
+                ]}
+              >
+                {item.time}
+              </Text>
+              {!item.available && <Text style={styles.llenoText}>Lleno</Text>}
+            </TouchableOpacity>
+          )}
+        />
+      )}
 
       <TouchableOpacity
         style={[styles.button, !horarioSeleccionado && styles.buttonDisabled]}
@@ -121,7 +174,7 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     paqueteNombre: { fontSize: 20, fontWeight: 'bold', color: theme.text },
     paqueteDetalle: { fontSize: 14, color: theme.textMuted, marginTop: 4 },
     sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 12, color: theme.text },
-    diasContainer: { gap: 10, marginBottom: 24 },
+    diasContainer: { gap: 10, marginBottom: 24, paddingVertical: 4 },
     diaCard: {
       backgroundColor: theme.card,
       paddingHorizontal: 20,
@@ -149,7 +202,9 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     horarioText: { fontSize: 16, fontWeight: '600', color: theme.text },
     horarioTextNoDisponible: { color: theme.textMuted },
     horarioTextSeleccionado: { color: 'white' },
-    button: { backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 10, alignItems: 'center' },
+    llenoText: { fontSize: 10, color: theme.textMuted, marginTop: 2 },
+    loadingContainer: { padding: 30, alignItems: 'center', justifyContent: 'center' },
+    button: { backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 10, alignItems: 'center', marginTop: 'auto' },
     buttonDisabled: { opacity: 0.5 },
     buttonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
   });

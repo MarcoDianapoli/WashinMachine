@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, Button, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Button, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/store';
 import { Colors } from '@/constants/Colors';
+import { resolveCodeApi, advanceCodeApi } from '@/lib/api';
 
 export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const [loading, setLoading] = useState(false);
   const { citas, entregarCita, showToast, tema } = useApp();
   const theme = Colors[tema];
   const router = useRouter();
@@ -27,28 +29,46 @@ export default function ScannerScreen() {
     );
   }
 
-  const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
-    if (scanned) return;
+  const handleBarCodeScanned = async ({ type, data }: { type: string; data: string }) => {
+    if (scanned || loading) return;
     setScanned(true);
+    setLoading(true);
 
-    const idCita = data.trim();
-    const cita = citas.find(c => c.id === idCita);
+    const code = data.trim();
 
-    if (!cita) {
-      showToast('Cita no encontrada');
-      setTimeout(() => setScanned(false), 2000);
-      return;
+    try {
+      // Try resolving code via API
+      const res = await advanceCodeApi(code);
+      let msg = 'Cita avanzada correctamente';
+      if (res.status === 'in_progress') msg = 'Cita tomada en proceso';
+      else if (res.status === 'ready_for_pickup') msg = 'Auto listo para entrega';
+      else if (res.status === 'completed') msg = 'Auto entregado al cliente';
+
+      showToast(msg);
+      router.back();
+    } catch (err: any) {
+      // Fallback local logic if offline/test
+      const idCita = code;
+      const cita = citas.find(c => c.id === idCita || c.code === idCita);
+
+      if (!cita) {
+        showToast(err?.message || 'Código QR no válido o cita no encontrada');
+        setTimeout(() => { setScanned(false); setLoading(false); }, 2000);
+        return;
+      }
+
+      if (cita.estado !== 'listo_entrega' && cita.estado !== 'confirmada' && cita.estado !== 'pendiente') {
+        showToast(`La cita está en estado: ${cita.estado}`);
+        setTimeout(() => { setScanned(false); setLoading(false); }, 2000);
+        return;
+      }
+
+      entregarCita(cita.id);
+      showToast('Auto entregado correctamente');
+      router.back();
+    } finally {
+      setLoading(false);
     }
-
-    if (cita.estado !== 'listo_entrega') {
-      showToast(`La cita está en estado: ${cita.estado}`);
-      setTimeout(() => setScanned(false), 2000);
-      return;
-    }
-
-    entregarCita(cita.id);
-    showToast('Auto entregado correctamente');
-    router.back();
   };
 
   return (
@@ -63,8 +83,11 @@ export default function ScannerScreen() {
       />
       <View style={styles.overlay}>
         <View style={styles.scanArea} />
-        <Text style={styles.promptText}>Apunta al código QR del cliente</Text>
-        {scanned && (
+        <Text style={styles.promptText}>
+          {loading ? 'Procesando código...' : 'Apunta al código QR del cliente'}
+        </Text>
+        {loading && <ActivityIndicator size="large" color="#ffffff" style={{ marginTop: 16 }} />}
+        {scanned && !loading && (
           <TouchableOpacity style={[styles.button, { backgroundColor: theme.primary }]} onPress={() => setScanned(false)}>
             <Text style={styles.buttonText}>Toca para escanear de nuevo</Text>
           </TouchableOpacity>

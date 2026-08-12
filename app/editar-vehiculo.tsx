@@ -86,6 +86,16 @@ function matchBodyClass(raw: string): string {
   return 'default';
 }
 
+function mapToApiVehicleType(t?: string | null): any {
+  if (!t) return 'medium';
+  const l = t.toLowerCase();
+  if (l.includes('motorcycle') || l.includes('moto')) return 'motorcycle';
+  if (l.includes('trailer')) return 'trailer';
+  if (l.includes('sedan') || l.includes('chico') || l.includes('coupe') || l.includes('hatchback')) return 'small';
+  if (l.includes('suv') || l.includes('mediano')) return 'medium';
+  return 'large';
+}
+
 function arrayBufferToBase64(buf: ArrayBuffer): string {
   let bin = '';
   new Uint8Array(buf).forEach((b) => { bin += String.fromCharCode(b); });
@@ -154,12 +164,14 @@ async function searchWikimedia(make: string, model: string, year: string | null)
 
 export default function EditarVehiculoScreen() {
   const router = useRouter();
-  const { setTamanoVehiculo, tamanoVehiculo, setCliente, cliente: storedCliente, tema } = useApp();
+  const { setTamanoVehiculo, tamanoVehiculo, setCliente, cliente: storedCliente, tema, addVehicleApiCall, updateVehicleApiCall, deleteVehicleApiCall, showToast } = useApp();
   const theme = Colors[tema];
   const styles = useMemo(() => getStyles(tema), [tema]);
   
   const [viewMode, setViewMode] = useState<'list' | 'edit'>('list');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const defaultVehiculo: Vehiculo = { placa: '', marca: '', modelo: '', color: '' };
   const [vehiculo, setVehiculo] = useState<Vehiculo>(defaultVehiculo);
@@ -189,6 +201,7 @@ export default function EditarVehiculoScreen() {
   const enterEditMode = useCallback((veh: Vehiculo, index: number | null) => {
     setVehiculo(veh);
     setEditingIndex(index);
+    setEditingVehicleId(veh._id || null);
     setSelectedYear(veh.anio ?? null);
     if (veh.imagenUri) {
       if (veh.imagenUri.startsWith('file:')) {
@@ -230,7 +243,7 @@ export default function EditarVehiculoScreen() {
         unique.sort((a, b) => a.Make_Name.localeCompare(b.Make_Name));
         setMakes(unique);
       })
-      .catch(() => Alert.alert('Error', 'No se pudieron cargar las marcas'))
+      .catch(() => {})
       .finally(() => setLoadingMakes(false));
   }, []);
 
@@ -265,7 +278,7 @@ export default function EditarVehiculoScreen() {
         unique.sort((a, b) => a.Model_Name.localeCompare(b.Model_Name));
         setModels(unique);
       })
-      .catch(() => Alert.alert('Error', 'No se pudieron cargar los modelos'))
+      .catch(() => {})
       .finally(() => setLoadingModels(false));
   }, []);
 
@@ -381,11 +394,9 @@ export default function EditarVehiculoScreen() {
   const selectYear = useCallback((year: string) => {
     setSelectedYear(year);
     setModalConfig((p) => ({ ...p, visible: false }));
-    // Si ya tenemos marca y modelo, actualizamos la búsqueda de imagen
     if (vehiculo.marca && vehiculo.modelo) {
       triggerSearch(vehiculo.marca, vehiculo.modelo, year);
     } else if (selectedMakeId) {
-      // Si no tenemos modelo, buscamos los modelos filtrados por ese año
       fetchModels(selectedMakeId, year);
     }
   }, [selectedMakeId, fetchModels, vehiculo.marca, vehiculo.modelo, triggerSearch]);
@@ -393,7 +404,6 @@ export default function EditarVehiculoScreen() {
   const selectModel = useCallback((m: ModelResult) => {
     setVehiculo((prev) => ({ ...prev, modelo: m.Model_Name }));
     triggerSearch(vehiculo.marca, m.Model_Name, selectedYear);
-    // Después de seleccionar modelo, pasamos a seleccionar año
     setModalConfig({ visible: true, mode: 'año' });
   }, [vehiculo.marca, selectedYear, triggerSearch]);
 
@@ -412,40 +422,86 @@ export default function EditarVehiculoScreen() {
   const emoji = vehicleType ? TYPE_EMOJI[matchBodyClass(vehicleType)] || DEFAULT_EMOJI : DEFAULT_EMOJI;
   const loading = modalConfig.mode === 'marca' ? loadingMakes : loadingModels;
 
-  const guardar = () => {
-    const vehiculoActualizado: Vehiculo = {
-      ...vehiculo,
-      anio: selectedYear ?? undefined,
-      imagenUri: showUploaded && uploadedImage ? uploadedImage : selectedImage?.dataUri ?? undefined,
-      tipoVehiculo: vehicleType ?? undefined,
-    };
-    
-    const currentVehiculos = storedCliente?.vehiculos || [];
-    let nuevosVehiculos = [...currentVehiculos];
-    
-    if (editingIndex !== null && editingIndex >= 0 && editingIndex < nuevosVehiculos.length) {
-      nuevosVehiculos[editingIndex] = vehiculoActualizado;
-    } else {
-      nuevosVehiculos.push(vehiculoActualizado);
+  const guardar = async () => {
+    if (!vehiculo.marca) {
+      showToast('Debes seleccionar al menos una marca');
+      return;
     }
 
-    setCliente({ 
-      ...(storedCliente ?? { nombre: '', telefono: '', personaRecoge: '', direccion: '', notas: '', vehiculos: [] }),
-      vehiculos: nuevosVehiculos 
-    });
-    
-    Alert.alert('Datos guardados', 'Tu información se ha actualizado correctamente.');
-    setViewMode('list');
+    setSaving(true);
+    const finalImageUri = showUploaded && uploadedImage ? uploadedImage : selectedImage?.dataUri ?? undefined;
+
+    try {
+      if (editingVehicleId) {
+        // API Update
+        await updateVehicleApiCall(editingVehicleId, {
+          plate: vehiculo.placa,
+          make: vehiculo.marca,
+          model: vehiculo.modelo,
+          color: vehiculo.color,
+          year: selectedYear ?? undefined,
+          vehicleType: mapToApiVehicleType(vehicleType),
+          imageUri: finalImageUri,
+        });
+      } else {
+        // API Create
+        await addVehicleApiCall({
+          plate: vehiculo.placa,
+          make: vehiculo.marca,
+          model: vehiculo.modelo,
+          color: vehiculo.color,
+          year: selectedYear ?? undefined,
+          vehicleType: mapToApiVehicleType(vehicleType),
+          imageUri: finalImageUri,
+        });
+      }
+      showToast('Vehículo guardado correctamente');
+      setViewMode('list');
+    } catch {
+      // Local fallback
+      const vehiculoActualizado: Vehiculo = {
+        ...vehiculo,
+        anio: selectedYear ?? undefined,
+        imagenUri: finalImageUri,
+        tipoVehiculo: vehicleType ?? undefined,
+      };
+      
+      const currentVehiculos = storedCliente?.vehiculos || [];
+      let nuevosVehiculos = [...currentVehiculos];
+      
+      if (editingIndex !== null && editingIndex >= 0 && editingIndex < nuevosVehiculos.length) {
+        nuevosVehiculos[editingIndex] = vehiculoActualizado;
+      } else {
+        nuevosVehiculos.push(vehiculoActualizado);
+      }
+
+      setCliente({ 
+        ...(storedCliente ?? { nombre: '', telefono: '', personaRecoge: '', direccion: '', notas: '', vehiculos: [] }),
+        vehiculos: nuevosVehiculos 
+      });
+      showToast('Vehículo guardado localmente');
+      setViewMode('list');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const eliminarVehiculo = (index: number) => {
+  const eliminarVehiculo = (index: number, vehId?: string) => {
     Alert.alert('Eliminar vehículo', '¿Estás seguro de eliminar este vehículo?', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: () => {
+      { text: 'Eliminar', style: 'destructive', onPress: async () => {
+          if (vehId) {
+            try {
+              await deleteVehicleApiCall(vehId);
+              showToast('Vehículo eliminado');
+              return;
+            } catch {}
+          }
           if (!storedCliente) return;
           const nuevosVehiculos = [...(storedCliente.vehiculos || [])];
           nuevosVehiculos.splice(index, 1);
           setCliente({ ...storedCliente, vehiculos: nuevosVehiculos });
+          showToast('Vehículo eliminado');
       }}
     ]);
   };
@@ -468,7 +524,7 @@ export default function EditarVehiculoScreen() {
             misVehiculos.map((veh, index) => {
               const tipoStr = veh.tipoVehiculo ? TYPE_EMOJI[matchBodyClass(veh.tipoVehiculo)] : DEFAULT_EMOJI;
               return (
-                <View key={index} style={styles.resumenCard}>
+                <View key={veh._id || index} style={styles.resumenCard}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
                     <Text style={{ fontSize: 32, marginRight: 10 }}>{tipoStr}</Text>
                     <View style={{ flex: 1 }}>
@@ -481,7 +537,7 @@ export default function EditarVehiculoScreen() {
                     </View>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
-                    <TouchableOpacity onPress={() => eliminarVehiculo(index)} style={{ padding: 8, backgroundColor: theme.danger + '20', borderRadius: 8 }}>
+                    <TouchableOpacity onPress={() => eliminarVehiculo(index, veh._id)} style={{ padding: 8, backgroundColor: theme.danger + '20', borderRadius: 8 }}>
                       <Text style={{ color: theme.danger, fontWeight: '600' }}>Eliminar</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => enterEditMode(veh, index)} style={{ padding: 8, backgroundColor: theme.primary + '20', borderRadius: 8 }}>
@@ -623,8 +679,8 @@ export default function EditarVehiculoScreen() {
         <Text style={styles.label}>Color</Text>
         <TextInput style={styles.input} placeholder="Color del vehículo" value={vehiculo.color} onChangeText={(t) => setVehiculo((p) => ({ ...p, color: t }))} />
 
-        <TouchableOpacity style={styles.button} onPress={guardar}>
-          <Text style={styles.buttonText}>Guardar datos</Text>
+        <TouchableOpacity style={[styles.button, saving && { opacity: 0.6 }]} onPress={guardar} disabled={saving}>
+          {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Guardar datos</Text>}
         </TouchableOpacity>
       </ScrollView>
 

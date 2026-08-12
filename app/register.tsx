@@ -1,23 +1,30 @@
 import { useState, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/store';
 import { Colors } from '@/constants/Colors';
+import { ApiError } from '@/lib/api';
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { showToast, tema } = useApp();
+  const { registerWithEmail, showToast, tema } = useApp();
   const theme = Colors[tema];
   const styles = useMemo(() => getStyles(tema), [tema]);
   
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
+  const [telefono, setTelefono] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const registrar = () => {
+  const registrar = async () => {
     if (!nombre.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
-      showToast('Por favor llena todos los campos');
+      showToast('Por favor llena todos los campos obligatorios');
+      return;
+    }
+    if (password.length < 6) {
+      showToast('La contraseña debe tener al menos 6 caracteres');
       return;
     }
     if (password !== confirmPassword) {
@@ -25,10 +32,20 @@ export default function RegisterScreen() {
       return;
     }
 
-    // Aquí iría la lógica para enviar los datos a una API en el futuro.
-    // Por el momento simulamos un registro exitoso local.
-    showToast('Cuenta creada exitosamente');
-    router.replace('/login');
+    setLoading(true);
+    try {
+      await registerWithEmail(nombre.trim(), email.trim().toLowerCase(), password, telefono.trim() || undefined);
+      showToast('Cuenta creada exitosamente');
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      if (err instanceof ApiError) {
+        showToast(err.message || 'Error al registrar usuario');
+      } else {
+        showToast('Error de conexión con el servidor');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,27 +57,27 @@ export default function RegisterScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Crear una cuenta nueva</Text>
           <View style={styles.loginLinkContainer}>
-            <Text style={styles.loginText}>Ya tienes una cuenta? </Text>
+            <Text style={styles.loginText}>¿Ya tienes una cuenta? </Text>
             <TouchableOpacity onPress={() => router.back()}>
-              <Text style={styles.loginLink}>Click AQUI</Text>
+              <Text style={styles.loginLink}>Haz click AQUÍ</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <Text style={styles.label}>NOMBRE</Text>
+        <Text style={styles.label}>NOMBRE COMPLETO</Text>
         <TextInput
           style={styles.input}
-          placeholder="Jia Ranjan"
+          placeholder="Juan Pérez"
           placeholderTextColor={theme.textMuted}
           value={nombre}
           onChangeText={setNombre}
           textAlign="center"
         />
 
-        <Text style={styles.label}>EMAIL</Text>
+        <Text style={styles.label}>CORREO ELECTRÓNICO</Text>
         <TextInput
           style={styles.input}
-          placeholder="hello@reallygreatsite.com"
+          placeholder="juan@ejemplo.com"
           placeholderTextColor={theme.textMuted}
           value={email}
           onChangeText={setEmail}
@@ -69,10 +86,21 @@ export default function RegisterScreen() {
           textAlign="center"
         />
 
+        <Text style={styles.label}>TELÉFONO (OPCIONAL)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="3312345678"
+          placeholderTextColor={theme.textMuted}
+          value={telefono}
+          onChangeText={setTelefono}
+          keyboardType="phone-pad"
+          textAlign="center"
+        />
+
         <Text style={styles.label}>CONTRASEÑA</Text>
         <TextInput
           style={styles.input}
-          placeholder="••••••••"
+          placeholder="Mínimo 6 caracteres"
           placeholderTextColor={theme.textMuted}
           value={password}
           onChangeText={setPassword}
@@ -92,11 +120,15 @@ export default function RegisterScreen() {
         />
 
         <TouchableOpacity
-          style={[styles.button, (!nombre.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) && styles.buttonDisabled]}
+          style={[styles.button, (!nombre.trim() || !email.trim() || !password.trim() || !confirmPassword.trim() || loading) && styles.buttonDisabled]}
           onPress={registrar}
-          disabled={!nombre.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()}
+          disabled={!nombre.trim() || !email.trim() || !password.trim() || !confirmPassword.trim() || loading}
         >
-          <Text style={styles.buttonText}>Registrarte</Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Registrarte</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -119,16 +151,16 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     },
     header: {
       alignItems: 'center',
-      marginBottom: 40,
+      marginBottom: 30,
     },
     title: {
-      fontSize: 28,
+      fontSize: 26,
       fontWeight: 'bold',
       textAlign: 'center',
       color: theme.text,
       marginBottom: 10,
-      width: '70%',
-      lineHeight: 34,
+      width: '80%',
+      lineHeight: 32,
     },
     loginLinkContainer: {
       flexDirection: 'row',
@@ -140,13 +172,13 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     loginLink: {
       fontSize: 13,
       color: theme.primary,
-      textDecorationLine: 'underline',
+      fontWeight: 'bold',
     },
     label: { 
       fontSize: 12, 
       fontWeight: 'bold', 
       color: theme.textMuted, 
-      marginBottom: 8, 
+      marginBottom: 6, 
       letterSpacing: 1 
     },
     input: {
@@ -155,7 +187,7 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       paddingVertical: 14,
       borderRadius: 6,
       fontSize: 14,
-      marginBottom: 20,
+      marginBottom: 16,
       color: theme.text,
       borderWidth: 1,
       borderColor: theme.border,

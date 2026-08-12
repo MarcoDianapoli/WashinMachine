@@ -1,50 +1,64 @@
 import { useState, useEffect, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/store';
 import { Colors } from '@/constants/Colors';
 
 export default function EditarDatosPersonalesScreen() {
   const router = useRouter();
-  const { cliente, setCliente, showToast, tema } = useApp();
+  const { cliente, authUser, setCliente, actualizarPerfil, showToast, tema } = useApp();
   const theme = Colors[tema];
   const styles = useMemo(() => getStyles(tema), [tema]);
   
-  const [nombre, setNombre] = useState(cliente?.nombre ?? '');
-  const [telefono, setTelefono] = useState(cliente?.telefono ?? '');
-  const [personaRecoge, setPersonaRecoge] = useState(cliente?.personaRecoge ?? '');
-  const [direccion, setDireccion] = useState(cliente?.direccion ?? '');
-  const [notas, setNotas] = useState(cliente?.notas ?? '');
+  const [nombre, setNombre] = useState(authUser?.nombre || cliente?.nombre || '');
+  const [telefono, setTelefono] = useState(authUser?.telefono || cliente?.telefono || '');
+  const [personaRecoge, setPersonaRecoge] = useState(authUser?.pickupPerson || cliente?.personaRecoge || '');
+  const [direccion, setDireccion] = useState(authUser?.direccion || cliente?.direccion || '');
+  const [notas, setNotas] = useState(authUser?.notas || cliente?.notas || '');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (cliente) {
-      setNombre(cliente.nombre);
-      setTelefono(cliente.telefono);
-      setPersonaRecoge(cliente.personaRecoge ?? '');
-      setDireccion(cliente.direccion ?? '');
-      setNotas(cliente.notas ?? '');
+    if (authUser || cliente) {
+      setNombre(authUser?.nombre || cliente?.nombre || '');
+      setTelefono(authUser?.telefono || cliente?.telefono || '');
+      setPersonaRecoge(authUser?.pickupPerson || cliente?.personaRecoge || '');
+      setDireccion(authUser?.direccion || cliente?.direccion || '');
+      setNotas(authUser?.notas || cliente?.notas || '');
     }
-  }, [cliente]);
+  }, [authUser, cliente]);
 
-  const guardar = () => {
+  const guardar = async () => {
     if (!nombre.trim() || !telefono.trim()) {
       showToast('Nombre y teléfono son obligatorios');
       return;
     }
-    
-    setCliente({ 
-      ...(cliente as any),
-      nombre, 
-      telefono, 
-      vehiculo: cliente?.vehiculo || { placa: '', marca: '', modelo: '', color: '' },
-      vehiculos: cliente?.vehiculos || [],
-      personaRecoge, 
-      direccion, 
-      notas 
-    });
-    
-    showToast('Datos personales actualizados');
-    router.back();
+
+    setLoading(true);
+    try {
+      await actualizarPerfil({
+        name: nombre.trim(),
+        phone: telefono.trim(),
+        pickupPerson: personaRecoge.trim(),
+        address: direccion.trim(),
+        notes: notas.trim(),
+      });
+
+      setCliente({ 
+        ...(cliente as any),
+        nombre: nombre.trim(), 
+        telefono: telefono.trim(), 
+        personaRecoge: personaRecoge.trim(), 
+        direccion: direccion.trim(), 
+        notas: notas.trim() 
+      });
+      
+      showToast('Datos personales actualizados');
+      router.back();
+    } catch {
+      showToast('Error al actualizar datos en el servidor');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -105,8 +119,8 @@ export default function EditarDatosPersonalesScreen() {
           numberOfLines={4}
         />
 
-        <TouchableOpacity style={styles.button} onPress={guardar}>
-          <Text style={styles.buttonText}>Guardar datos</Text>
+        <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={guardar} disabled={loading}>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Guardar datos</Text>}
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -165,6 +179,7 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       marginTop: 10,
       marginBottom: 30,
     },
+    buttonDisabled: { opacity: 0.5 },
     buttonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
   });
 };

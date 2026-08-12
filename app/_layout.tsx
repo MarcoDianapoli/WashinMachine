@@ -1,29 +1,54 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import 'react-native-reanimated';
 
 import { Colors } from '@/constants/Colors';
-
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AppProvider, useApp } from '@/store';
 import { CarTransitionProvider } from '@/components/car-transition';
-import { PwaSetup } from '@/components/pwa-setup';
 import { Toast } from '@/components/toast';
-import { InstallBanner } from '@/components/install-banner';
 
 export const unstable_settings = {
   initialRouteName: 'login',
 };
 
 function RootNavigation() {
-  const { tema } = useApp();
+  const { tema, isAuthChecking, authUser } = useApp();
+  const router = useRouter();
+  const segments = useSegments();
 
   useEffect(() => {
     SystemUI.setBackgroundColorAsync(Colors[tema].background);
   }, [tema]);
+
+  useEffect(() => {
+    if (isAuthChecking) return;
+
+    const currentRoute = segments[0];
+    const isUnauthRoute = currentRoute === 'login' || currentRoute === 'register' || !currentRoute;
+
+    if (authUser && isUnauthRoute) {
+      if (authUser.rol === 'lavador') {
+        router.replace('/lavador');
+      } else {
+        router.replace('/(tabs)');
+      }
+    } else if (!authUser && !isUnauthRoute) {
+      router.replace('/login');
+    }
+  }, [isAuthChecking, authUser, segments]);
+
+  if (isAuthChecking) {
+    const theme = Colors[tema];
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </View>
+    );
+  }
 
   return (
     <ThemeProvider value={tema === 'oscuro' ? DarkTheme : DefaultTheme}>
@@ -42,12 +67,18 @@ function RootNavigation() {
         </Stack>
         <Toast />
       </CarTransitionProvider>
-      <PwaSetup />
-      <InstallBanner />
       <StatusBar style={tema === 'oscuro' ? 'light' : 'dark'} />
     </ThemeProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
 
 export default function RootLayout() {
   return (

@@ -8,7 +8,9 @@ import { Colors } from '@/constants/Colors';
 
 const ESTADO_COLOR: Record<string, string> = {
   pendiente: '#f59e0b',
-  confirmada: '#dc2626',
+  confirmada: '#2563eb',
+  en_proceso: '#8b5cf6',
+  listo_entrega: '#ec4899',
   completada: '#10b981',
   cancelada: '#ef4444',
 };
@@ -16,24 +18,30 @@ const ESTADO_COLOR: Record<string, string> = {
 const ESTADO_LABEL: Record<string, string> = {
   pendiente: 'Pendiente',
   confirmada: 'Confirmada',
-  completada: 'Completada',
+  en_proceso: 'En Proceso 🧼',
+  listo_entrega: '¡Listo para entrega! ✨',
+  completada: 'Completada / Entregado 🚗',
   cancelada: 'Cancelada',
 };
 
 function CitaCard({ item, index, onPress, theme, styles }: any) {
+  const color = ESTADO_COLOR[item.estado] || '#666';
+  const label = ESTADO_LABEL[item.estado] || item.estado;
+
   return (
     <Animated.View entering={FadeInDown.delay(index * 100).springify()}>
       <TouchableOpacity style={styles.card} onPress={() => onPress(item)} activeOpacity={0.8}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>{item.paqueteNombre}</Text>
-          <View style={[styles.badge, { backgroundColor: ESTADO_COLOR[item.estado] + '20' }]}>
-            <Text style={[styles.badgeText, { color: ESTADO_COLOR[item.estado] }]}>
-              {ESTADO_LABEL[item.estado]}
+          <View style={[styles.badge, { backgroundColor: color + '20' }]}>
+            <Text style={[styles.badgeText, { color }]}>
+              {label}
             </Text>
           </View>
         </View>
         <Text style={styles.cardDate}>{item.fecha} — {item.hora}</Text>
-        <Text style={styles.cardClient}>{item.cliente.nombre} • {item.cliente.vehiculo?.placa || item.cliente.vehiculos?.[0]?.placa || 'sin placa'}</Text>
+        {item.code ? <Text style={styles.cardCode}>Código QR: {item.code}</Text> : null}
+        <Text style={styles.cardClient}>{item.cliente.nombre} • {item.cliente.vehiculo?.[0]?.modelo || item.cliente.vehiculo?.modelo || 'Auto'}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -41,7 +49,7 @@ function CitaCard({ item, index, onPress, theme, styles }: any) {
 
 export default function MisCitasScreen() {
   const router = useRouter();
-  const { citas, cancelarCita, eliminarCita, tema } = useApp();
+  const { citas, cancelarCita, eliminarCita, syncAppointments, tema } = useApp();
   const theme = Colors[tema];
   const styles = useMemo(() => getStyles(tema), [tema]);
   
@@ -57,8 +65,8 @@ export default function MisCitasScreen() {
         {
           text: 'Sí, cancelar',
           style: 'destructive',
-          onPress: () => {
-            cancelarCita(citaSeleccionada.id);
+          onPress: async () => {
+            await cancelarCita(citaSeleccionada.id);
             setCitaSeleccionada(null);
           },
         },
@@ -89,8 +97,12 @@ export default function MisCitasScreen() {
 
   return (
     <View style={styles.container}>
-      <Animated.View entering={FadeInDown.springify()}>
+      <Animated.View entering={FadeInDown.springify()} style={styles.headerRow}>
         <Text style={styles.title}>Mis Citas</Text>
+        <TouchableOpacity style={styles.liveIndicator} onPress={() => syncAppointments()}>
+          <View style={styles.liveDot} />
+          <Text style={styles.liveText}>En vivo</Text>
+        </TouchableOpacity>
       </Animated.View>
 
       {citas.length === 0 ? (
@@ -103,6 +115,8 @@ export default function MisCitasScreen() {
           data={citas}
           keyExtractor={(c) => c.id}
           contentContainerStyle={styles.list}
+          onRefresh={syncAppointments}
+          refreshing={false}
           renderItem={({ item, index }) => (
             <CitaCard item={item} index={index} onPress={setCitaSeleccionada} theme={theme} styles={styles} />
           )}
@@ -133,12 +147,20 @@ export default function MisCitasScreen() {
                 </View>
 
                 <View style={styles.detailSection}>
-                  <View style={[styles.statusBadge, { backgroundColor: ESTADO_COLOR[citaSeleccionada.estado] + '20' }]}>
-                    <Text style={[styles.statusText, { color: ESTADO_COLOR[citaSeleccionada.estado] }]}>
-                      {ESTADO_LABEL[citaSeleccionada.estado]}
+                  <View style={[styles.statusBadge, { backgroundColor: (ESTADO_COLOR[citaSeleccionada.estado] || '#666') + '20' }]}>
+                    <Text style={[styles.statusText, { color: ESTADO_COLOR[citaSeleccionada.estado] || '#666' }]}>
+                      {ESTADO_LABEL[citaSeleccionada.estado] || citaSeleccionada.estado}
                     </Text>
                   </View>
                 </View>
+
+                {citaSeleccionada.code ? (
+                  <View style={styles.qrContainer}>
+                    <Text style={styles.qrLabel}>CÓDIGO DE RESERVA / QR</Text>
+                    <Text style={styles.qrCodeText}>{citaSeleccionada.code}</Text>
+                    <Text style={styles.qrHint}>Muestra este código al entregar o recoger tu vehículo</Text>
+                  </View>
+                ) : null}
 
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Fecha</Text>
@@ -154,13 +176,12 @@ export default function MisCitasScreen() {
                 </View>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Teléfono</Text>
-                  <Text style={styles.detailValue}>{citaSeleccionada.cliente.telefono}</Text>
+                  <Text style={styles.detailValue}>{citaSeleccionada.cliente.telefono || 'No registrado'}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Vehículo</Text>
                   <Text style={styles.detailValue}>
-                    {citaSeleccionada.cliente.vehiculo?.marca || citaSeleccionada.cliente.vehiculos?.[0]?.marca} {citaSeleccionada.cliente.vehiculo?.modelo || citaSeleccionada.cliente.vehiculos?.[0]?.modelo}
-                    {(citaSeleccionada.cliente.vehiculo?.placa || citaSeleccionada.cliente.vehiculos?.[0]?.placa) ? ` · ${citaSeleccionada.cliente.vehiculo?.placa || citaSeleccionada.cliente.vehiculos?.[0]?.placa}` : ''}
+                    {citaSeleccionada.cliente.vehiculo?.[0]?.marca || citaSeleccionada.cliente.vehiculo?.marca || 'Vehículo'} {citaSeleccionada.cliente.vehiculo?.[0]?.modelo || citaSeleccionada.cliente.vehiculo?.modelo || ''}
                   </Text>
                 </View>
 
@@ -189,7 +210,11 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
   
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background, padding: 20 },
-    title: { fontSize: 28, fontWeight: 'bold', marginBottom: 20, marginTop: 10, color: theme.text },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, marginTop: 10 },
+    title: { fontSize: 28, fontWeight: 'bold', color: theme.text },
+    liveIndicator: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? '#1e293b' : '#f0fdf4', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: '#22c55e' },
+    liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e', marginRight: 6 },
+    liveText: { fontSize: 12, fontWeight: 'bold', color: '#15803d' },
     list: { gap: 12, paddingBottom: 100 },
     card: { backgroundColor: theme.card, padding: 16, borderRadius: 10, borderWidth: 1, borderColor: theme.border },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
@@ -197,6 +222,7 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
     badgeText: { fontSize: 12, fontWeight: '600' },
     cardDate: { fontSize: 14, color: theme.textMuted },
+    cardCode: { fontSize: 13, fontWeight: '700', color: theme.primary, marginTop: 4 },
     cardClient: { fontSize: 12, color: theme.textMuted, marginTop: 4 },
     empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyText: { fontSize: 18, fontWeight: '600', color: theme.textMuted },
@@ -224,9 +250,13 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
     modalTitle: { fontSize: 22, fontWeight: 'bold', flex: 1, color: theme.text },
     modalClose: { fontSize: 16, color: theme.danger, fontWeight: '600' },
-    detailSection: { marginBottom: 16 },
+    detailSection: { marginBottom: 12 },
     statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 14 },
     statusText: { fontSize: 14, fontWeight: '700' },
+    qrContainer: { backgroundColor: isDark ? '#1e293b' : '#f8fafc', padding: 14, borderRadius: 10, marginVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: theme.border },
+    qrLabel: { fontSize: 11, fontWeight: 'bold', color: theme.textMuted, letterSpacing: 1 },
+    qrCodeText: { fontSize: 22, fontWeight: 'bold', color: theme.primary, marginVertical: 4, letterSpacing: 2 },
+    qrHint: { fontSize: 11, color: theme.textMuted, textAlign: 'center' },
     detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.border },
     detailLabel: { fontSize: 14, color: theme.textMuted },
     detailValue: { fontSize: 14, color: theme.text, fontWeight: '600', flex: 1, textAlign: 'right' },

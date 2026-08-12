@@ -7,33 +7,40 @@ import { Colors } from '@/constants/Colors';
 
 export default function PerfilMenuScreen() {
   const router = useRouter();
-  const { cliente, setCliente, tema, toggleTema } = useApp();
+  const { cliente, authUser, logout, tema, toggleTema, showToast } = useApp();
 
-  const handleLogout = () => {
-    // Por el momento simplemente quitamos el cliente y vamos al login
-    // setCliente(null); // Descomentar cuando quieras que se borre real la sesión
-    router.replace('/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      showToast('Sesión cerrada');
+      router.replace('/login');
+    } catch {
+      router.replace('/login');
+    }
   };
 
   const styles = useMemo(() => getStyles(tema), [tema]);
   const isDark = tema === 'oscuro';
 
+  const displayName = authUser?.nombre || cliente?.nombre || 'Usuario';
+  const displayPhone = authUser?.telefono || cliente?.telefono || '';
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         
-        {/* Cabecera del Perfil (Estilo WhatsApp) */}
+        {/* Cabecera del Perfil */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <Image 
-              source={{ uri: 'https://ui-avatars.com/api/?name=' + (cliente?.nombre || 'Usuario') + '&background=dc2626&color=fff&size=128' }} 
+              source={{ uri: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=dc2626&color=fff&size=128' }} 
               style={styles.avatar}
             />
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{cliente?.nombre || 'Usuario Invitado'}</Text>
+            <Text style={styles.profileName}>{displayName}</Text>
             <Text style={styles.profileUsername}>
-              {cliente?.telefono ? `Tel: ${cliente.telefono}` : '@usuario'}
+              {displayPhone ? `Tel: ${displayPhone}` : authUser?.email || '@usuario'}
             </Text>
           </View>
           <View style={styles.qrContainer}>
@@ -62,25 +69,9 @@ export default function PerfilMenuScreen() {
 
           <MenuItem 
             icon="calendar-outline" 
-            title="Historial de Citas" 
-            subtitle="Revisar lavados pasados y recibos"
-            onPress={() => {}}
-            tema={tema}
-          />
-
-          <MenuItem 
-            icon="star-outline" 
-            title="Suscripciones" 
-            subtitle="Explorar beneficios premium y paquetes"
-            onPress={() => {}}
-            tema={tema}
-          />
-
-          <MenuItem 
-            icon="notifications-outline" 
-            title="Notificaciones" 
-            subtitle="Recordatorios de lavado y promociones"
-            onPress={() => {}}
+            title="Mis Citas" 
+            subtitle="Revisar lavados agendados y activos"
+            onPress={() => router.push('/(tabs)')}
             tema={tema}
           />
 
@@ -88,7 +79,7 @@ export default function PerfilMenuScreen() {
             icon={isDark ? "moon-outline" : "sunny-outline"} 
             title="Modo Oscuro" 
             subtitle="Cambiar apariencia de la app"
-            onPress={() => {}} // Disabled click since we have switch
+            onPress={() => {}}
             tema={tema}
             rightElement={
               <Switch 
@@ -103,7 +94,7 @@ export default function PerfilMenuScreen() {
           <MenuItem 
             icon="log-out-outline" 
             title="Cerrar Sesión" 
-            subtitle="Salir de tu cuenta actual"
+            subtitle="Salir de tu cuenta y revocar sesión"
             onPress={handleLogout}
             isDestructive
             tema={tema}
@@ -115,7 +106,6 @@ export default function PerfilMenuScreen() {
   );
 }
 
-// Componente reutilizable para las opciones del menú
 function MenuItem({ icon, title, subtitle, onPress, isDestructive = false, tema, rightElement }: any) {
   const styles = useMemo(() => getStyles(tema), [tema]);
   const themeColors = Colors[tema];

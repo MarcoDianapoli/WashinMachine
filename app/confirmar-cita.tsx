@@ -1,10 +1,18 @@
 import { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, TextInput, Switch } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, TextInput, Switch, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useApp } from '@/store';
 import type { Cita, Vehiculo } from '@/types';
 import { Colors } from '@/constants/Colors';
+
+const TAMANO_TO_API_TYPE: Record<string, string> = {
+  chico: 'small',
+  mediano: 'medium',
+  grande: 'large',
+  moto: 'motorcycle',
+  trailer: 'trailer',
+};
 
 export default function ConfirmarCitaScreen() {
   const { paqueteId, fecha, hora } = useLocalSearchParams<{
@@ -13,7 +21,7 @@ export default function ConfirmarCitaScreen() {
     hora: string;
   }>();
   const router = useRouter();
-  const { paquetes, cliente, agregarCita, tema } = useApp();
+  const { paquetes, cliente, authUser, crearCitaApiCall, syncAppointments, showToast, tema } = useApp();
   const styles = useMemo(() => getStyles(tema), [tema]);
   const theme = Colors[tema];
 
@@ -25,6 +33,7 @@ export default function ConfirmarCitaScreen() {
   const [vehiculoSeleccionadoIdx, setVehiculoSeleccionadoIdx] = useState<number>(tieneVehiculoRegistrado ? 0 : -1);
   const [usarOtroVehiculo, setUsarOtroVehiculo] = useState(!tieneVehiculoRegistrado);
   const [otroModelo, setOtroModelo] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSwitch = (val: boolean) => {
     setUsarOtroVehiculo(val);
@@ -35,15 +44,16 @@ export default function ConfirmarCitaScreen() {
     }
   };
 
-  const confirmarCita = () => {
-    if (!cliente) {
-      Alert.alert('Faltan datos', 'Primero configura tu información en la sección Perfil.', [
-        { text: 'Ir a Perfil', onPress: () => router.replace('/(tabs)/perfil') },
+  const confirmarCita = async () => {
+    if (!authUser && !cliente) {
+      Alert.alert('Sesión requerida', 'Para guardar tus citas en la base de datos debes iniciar sesión.', [
+        { text: 'Iniciar Sesión', onPress: () => router.replace('/login') },
         { text: 'Cancelar', style: 'cancel' },
       ]);
       return;
     }
-    if (!paquete) return;
+
+    if (!paquete || !fecha || !hora) return;
 
     if (usarOtroVehiculo && !otroModelo.trim()) {
       Alert.alert('Faltan datos', 'Por favor ingresa el modelo del auto a lavar.');
@@ -61,20 +71,49 @@ export default function ConfirmarCitaScreen() {
       vehiculoCita = misVehiculos[vehiculoSeleccionadoIdx];
     }
 
-    const clienteAUsar = { ...cliente, vehiculo: vehiculoCita };
+    const vehicleTypeApi = TAMANO_TO_API_TYPE[paquete.tamano] || 'medium';
 
-    const nueva: Cita = {
-      id: `cita-${Date.now()}`,
-      paqueteId: paquete.id,
-      paqueteNombre: paquete.nombre,
-      fecha,
-      hora,
-      cliente: clienteAUsar,
-      estado: 'pendiente',
-    };
-    agregarCita(nueva);
-    router.replace('/exito');
+    setLoading(true);
+    try {
+      await crearCitaApiCall({
+        packageId: paquete.id,
+        date: fecha,
+        time: hora,
+        customer: {
+          name: authUser?.nombre || cliente?.nombre,
+          phone: authUser?.telefono || cliente?.telefono,
+          pickupPerson: cliente?.personaRecoge || authUser?.pickupPerson || undefined,
+        },
+        vehicle: {
+          plate: vehiculoCita.placa || undefined,
+          make: vehiculoCita.marca || 'Vehículo',
+          model: vehiculoCita.modelo || undefined,
+          color: vehiculoCita.color || undefined,
+          year: vehiculoCita.anio || undefined,
+          vehicleType: vehicleTypeApi,
+        },
+        notes: cliente?.notas || undefined,
+      });
+
+      await syncAppointments();
+      showToast('Cita creada exitosamente en la base de datos');
+      router.replace('/exito');
+    } catch (err: any) {
+      const errorMsg = err?.message || 'No se pudo agendar en la base de datos';
+      showToast(errorMsg);
+
+      if (errorMsg.toLowerCase().includes('token') || errorMsg.toLowerCase().includes('unauthorized')) {
+        Alert.alert('Sesión requerida', 'Debes iniciar sesión con tu cuenta para guardar la cita en la base de datos.', [
+          { text: 'Iniciar Sesión', onPress: () => router.replace('/login') },
+          { text: 'Cancelar', style: 'cancel' },
+        ]);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const nombreMostrar = authUser?.nombre || cliente?.nombre;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -99,14 +138,14 @@ export default function ConfirmarCitaScreen() {
         </View>
       </Animated.View>
 
-      {cliente ? (
+      {nombreMostrar ? (
         <Animated.View entering={FadeInDown.delay(300).springify()}>
           <View style={styles.card}>
             <Text style={styles.cardLabel}>CLIENTE</Text>
-            <Text style={styles.cardValue}>{cliente.nombre}</Text>
+            <Text style={styles.cardValue}>{nombreMostrar}</Text>
             <View style={styles.divider} />
             <Text style={styles.fieldLabel}>Teléfono</Text>
-            <Text style={styles.fieldValue}>{cliente.telefono}</Text>
+            <Text style={styles.fieldValue}>{authUser?.telefono || cliente?.telefono || 'No registrado'}</Text>
             
             <View style={styles.divider} />
             <Text style={styles.cardLabel}>VEHÍCULO A LAVAR</Text>
@@ -117,7 +156,7 @@ export default function ConfirmarCitaScreen() {
                   const isSelected = i === vehiculoSeleccionadoIdx;
                   return (
                     <TouchableOpacity 
-                      key={i} 
+                      key={v._id || i} 
                       onPress={() => setVehiculoSeleccionadoIdx(i)}
                       style={[styles.vehiculoCard, isSelected && styles.vehiculoCardSelected]}
                     >
@@ -154,11 +193,11 @@ export default function ConfirmarCitaScreen() {
               </View>
             )}
 
-            {cliente.personaRecoge ? (
+            {(cliente?.personaRecoge || authUser?.pickupPerson) ? (
               <>
                 <View style={styles.divider} />
                 <Text style={styles.fieldLabel}>Persona que recoge</Text>
-                <Text style={styles.fieldValue}>{cliente.personaRecoge}</Text>
+                <Text style={styles.fieldValue}>{authUser?.pickupPerson || cliente?.personaRecoge}</Text>
               </>
             ) : null}
           </View>
@@ -172,15 +211,15 @@ export default function ConfirmarCitaScreen() {
       )}
 
       <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.actions}>
-        <TouchableOpacity style={styles.buttonSecondary} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.buttonSecondary} onPress={() => router.back()} disabled={loading}>
           <Text style={styles.buttonSecondaryText}>Cancelar</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.button, !cliente && styles.buttonDisabled]}
+          style={[styles.button, (!nombreMostrar || loading) && styles.buttonDisabled]}
           onPress={confirmarCita}
-          disabled={!cliente}
+          disabled={!nombreMostrar || loading}
         >
-          <Text style={styles.buttonText}>Confirmar cita</Text>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Confirmar cita</Text>}
         </TouchableOpacity>
       </Animated.View>
     </ScrollView>

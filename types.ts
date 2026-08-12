@@ -6,6 +6,7 @@ export interface Paquete {
 }
 
 export interface Vehiculo {
+  _id?: string;
   placa: string;
   marca: string;
   modelo: string;
@@ -33,12 +34,14 @@ export interface Horario {
 
 export interface Cita {
   id: string;
+  code?: string;
   paqueteId: string;
   paqueteNombre: string;
   fecha: string;
   hora: string;
   cliente: Cliente;
   estado: 'pendiente' | 'confirmada' | 'completada' | 'cancelada' | 'en_proceso' | 'listo_entrega';
+  washerName?: string;
 }
 
 export interface AuthUser {
@@ -48,4 +51,8 @@ export interface AuthUser {
   nombre: string;
   telefono?: string;
   fotoPerfil?: string;
+  pickupPerson?: string;
+  direccion?: string;
+  notas?: string;
 }
+

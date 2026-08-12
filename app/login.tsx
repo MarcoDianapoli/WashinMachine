@@ -1,20 +1,38 @@
 import { useState, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Switch, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Switch, Image, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
 import { useApp } from '@/store';
 import { Colors } from '@/constants/Colors';
+import { Config } from '@/constants/Config';
+import { ApiError } from '@/lib/api';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { setCliente, showToast, tema, loginLavador } = useApp();
+  const { loginWithEmail, loginWithGoogle, loginLavador, showToast, tema } = useApp();
   const theme = Colors[tema];
   const styles = useMemo(() => getStyles(tema), [tema]);
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mantenerSesion, setMantenerSesion] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-  const iniciarSesion = () => {
+  const isGoogleConfigured = useMemo(() => {
+    return Boolean(Config.GOOGLE_CLIENT_ID && !Config.GOOGLE_CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID'));
+  }, []);
+
+  const redirectUri = useMemo(() => {
+    return AuthSession.makeRedirectUri({
+      scheme: 'autolavado',
+    });
+  }, []);
+
+  const iniciarSesion = async () => {
     if (!email.trim() || !password.trim()) {
       showToast('Por favor llena todos los campos');
       return;
@@ -22,29 +40,73 @@ export default function LoginScreen() {
     
     const userEmail = email.trim().toLowerCase();
     
-    // Validación de lavador
-    if ((userEmail === 'admin@monkey.com' || userEmail === 'admin@test.com') && loginLavador(password)) {
+    if ((userEmail === 'admin@monkey.com' || userEmail === 'admin@test.com' || userEmail.startsWith('lavador')) && loginLavador(password)) {
       showToast('Bienvenido al área de lavadores');
       router.replace('/lavador');
       return;
     }
 
-    // Simulación de API / Validación local cliente
-    if (userEmail === 'admin@test.com' && password === '123456') {
-      // Éxito: Guardamos el estado y navegamos
-      setCliente({ 
-        nombre: 'Admin Usuario', 
-        telefono: '0000000000', 
-        vehiculos: [], 
-        personaRecoge: '', 
-        direccion: '', 
-        notas: '' 
-      });
-      showToast('Bienvenido');
-      router.replace('/(tabs)');
-    } else {
-      // Error
-      showToast('Credenciales incorrectas');
+    setLoading(true);
+    try {
+      const user = await loginWithEmail(userEmail, password, mantenerSesion);
+      showToast(`Bienvenido ${user.nombre || ''}`);
+      if (user.rol === 'lavador') {
+        router.replace('/lavador');
+      } else {
+        router.replace('/(tabs)');
+      }
+    } catch (err: any) {
+      if (err instanceof ApiError) {
+        showToast(err.message || 'Credenciales incorrectas');
+      } else {
+        showToast('Error al conectar con el servidor');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    const clientId = Config.GOOGLE_CLIENT_ID;
+
+    if (!isGoogleConfigured) {
+      Alert.alert(
+        'Configuración de Google',
+        'Para activar Google Sign-In, coloca tu GOOGLE_CLIENT_ID en "constants/Config.ts".'
+      );
+      return;
+    }
+
+    setGoogleLoading(true);
+    try {
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `response_type=id_token` +
+        `&client_id=${encodeURIComponent(clientId)}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&scope=${encodeURIComponent('openid email profile')}` +
+        `&nonce=${Math.random().toString(36).substring(2)}`;
+
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+
+      if (result.type === 'success' && result.url) {
+        const match = result.url.match(/id_token=([^&]+)/);
+        const idToken = match ? match[1] : null;
+
+        if (idToken) {
+          const user = await loginWithGoogle(idToken);
+          showToast(`Bienvenido ${user.nombre}`);
+          router.replace('/(tabs)');
+          return;
+        }
+      }
+
+      if (result.type === 'cancel' || result.type === 'dismiss') {
+        showToast('Inicio de sesión cancelado');
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Error al iniciar sesión con Google');
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -56,11 +118,6 @@ export default function LoginScreen() {
       <View style={styles.content}>
         
         <View style={styles.logoContainer}>
-          {/* 
-            IMPORTANTE: 
-            Asegúrate de guardar el logo que pasaste en la carpeta:
-            assets/images/logo.png
-          */}
           <Image 
             source={require('../assets/images/logo.png')} 
             style={styles.logo}
@@ -92,7 +149,7 @@ export default function LoginScreen() {
         />
 
         <View style={styles.switchContainer}>
-          <Text style={styles.switchLabel}>Mantener Sesion Iniciada</Text>
+          <Text style={styles.switchLabel}>Mantener Sesión Iniciada</Text>
           <Switch
             trackColor={{ false: '#d1d1d1', true: theme.primary }}
             thumbColor={Platform.OS === 'ios' ? '#fff' : '#fff'}
@@ -103,15 +160,35 @@ export default function LoginScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.button, (!email.trim() || !password.trim()) && styles.buttonDisabled]}
+          style={[styles.button, (!email.trim() || !password.trim() || loading) && styles.buttonDisabled]}
           onPress={iniciarSesion}
-          disabled={!email.trim() || !password.trim()}
+          disabled={!email.trim() || !password.trim() || loading}
         >
-          <Text style={styles.buttonText}>Iniciar Sesion</Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Iniciar Sesión</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Botón de Google */}
+        <TouchableOpacity
+          style={[styles.googleButton, googleLoading && styles.buttonDisabled]}
+          onPress={handleGoogleLogin}
+          disabled={googleLoading}
+        >
+          {googleLoading ? (
+            <ActivityIndicator color={theme.text} />
+          ) : (
+            <View style={styles.googleContent}>
+              <Text style={styles.googleIcon}>G</Text>
+              <Text style={[styles.googleButtonText, { color: theme.text }]}>Continuar con Google</Text>
+            </View>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push('/register')}>
-          <Text style={styles.footerText}>Crea una cuenta aqui</Text>
+          <Text style={styles.footerText}>¿No tienes cuenta? <Text style={{ color: theme.primary, fontWeight: 'bold' }}>Crea una aquí</Text></Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -154,7 +231,7 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       paddingVertical: 14,
       borderRadius: 6,
       fontSize: 14,
-      marginBottom: 20,
+      marginBottom: 16,
       color: theme.text,
       borderWidth: 1,
       borderColor: theme.border,
@@ -163,7 +240,7 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 30,
+      marginBottom: 20,
       width: '100%',
     },
     switchLabel: {
@@ -177,7 +254,32 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       paddingVertical: 16, 
       borderRadius: 6, 
       alignItems: 'center',
-      marginBottom: 30,
+      marginBottom: 12,
+    },
+    googleButton: {
+      backgroundColor: theme.card,
+      borderColor: theme.border,
+      borderWidth: 1,
+      width: '100%',
+      paddingVertical: 14,
+      borderRadius: 6,
+      alignItems: 'center',
+      marginBottom: 24,
+    },
+    googleContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    googleIcon: {
+      fontWeight: 'bold',
+      fontSize: 16,
+      marginRight: 10,
+      color: '#4285F4',
+    },
+    googleButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
     },
     buttonDisabled: { 
       opacity: 0.5 
