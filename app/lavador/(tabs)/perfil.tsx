@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function LavadorPerfil() {
   const router = useRouter();
   const { authUser, actualizarPerfilLavador, logout, tema, toggleTema, showToast } = useApp();
-  const themeColors = Colors[tema];
+  const themeColors = Colors[tema as keyof typeof Colors];
   const styles = useMemo(() => getStyles(tema), [tema]);
   const isDark = tema === 'oscuro';
 
@@ -46,7 +46,11 @@ export default function LavadorPerfil() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        
+        <View style={styles.pageHeader}>
+          <Text style={styles.eyebrow}>EQUIPO</Text>
+          <Text style={styles.pageTitle}>Mi perfil</Text>
+        </View>
+
         {/* Cabecera del Perfil */}
         <View style={styles.profileHeader}>
           <TouchableOpacity style={styles.avatarContainer} onPress={pickImage} activeOpacity={0.8}>
@@ -130,7 +134,7 @@ export default function LavadorPerfil() {
 // Componente reutilizable
 function MenuItem({ icon, title, subtitle, onPress, isDestructive = false, tema, rightElement }: any) {
   const styles = useMemo(() => getStyles(tema), [tema]);
-  const themeColors = Colors[tema];
+  const themeColors = Colors[tema as keyof typeof Colors];
   const color = isDestructive ? themeColors.danger || '#ef4444' : themeColors.textMuted;
   const titleColor = isDestructive ? themeColors.danger || '#ef4444' : themeColors.text;
   
@@ -154,22 +158,45 @@ function MenuItem({ icon, title, subtitle, onPress, isDestructive = false, tema,
 
 const getStyles = (tema: 'claro' | 'oscuro') => {
   const theme = Colors[tema];
+  const isDark = tema === 'oscuro';
   return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: theme.background,
     },
     scrollContent: {
-      paddingVertical: 20,
+      paddingHorizontal: 18,
+      paddingTop: 18,
+      paddingBottom: 40,
+    },
+    pageHeader: {
+      marginBottom: 20,
+      paddingBottom: 16,
+      borderBottomWidth: 2,
+      borderBottomColor: theme.borderStrong,
+    },
+    eyebrow: {
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 2.8,
+      color: theme.textMuted,
+    },
+    pageTitle: {
+      color: theme.text,
+      fontSize: 42,
+      lineHeight: 46,
+      fontWeight: '900',
+      letterSpacing: -1.4,
     },
     profileHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingBottom: 30,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-      marginBottom: 10,
+      padding: 18,
+      borderWidth: isDark ? 1.5 : 1,
+      borderColor: theme.borderStrong,
+      borderRadius: 20,
+      backgroundColor: theme.card,
+      marginBottom: 18,
     },
     avatarContainer: {
       marginRight: 16,
@@ -204,8 +231,8 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       justifyContent: 'center',
     },
     profileName: {
-      fontSize: 20,
-      fontWeight: 'bold',
+      fontSize: 22,
+      fontWeight: '900',
       color: theme.text,
       marginBottom: 4,
     },
@@ -214,27 +241,32 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       color: theme.textMuted,
     },
     menuSection: {
-      paddingTop: 10,
+      gap: 12,
     },
     menuItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 16,
+      padding: 16,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: isDark ? theme.borderStrong : theme.border,
+      backgroundColor: theme.card,
     },
     menuIcon: {
-      width: 32,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       alignItems: 'center',
+      justifyContent: 'center',
       marginRight: 16,
+      backgroundColor: theme.primarySoft,
     },
     menuTextContainer: {
       flex: 1,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-      paddingBottom: 16,
     },
     menuTitle: {
       fontSize: 16,
+      fontWeight: '800',
       marginBottom: 2,
     },
     menuSubtitle: {
@@ -248,11 +280,11 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     },
     editPhoneContainer: {
       flexDirection: 'row',
-      paddingHorizontal: 20,
-      paddingBottom: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-      marginLeft: 68,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: theme.borderStrong,
+      borderRadius: 18,
+      backgroundColor: theme.card,
       alignItems: 'center',
     },
     input: {
@@ -260,17 +292,17 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       backgroundColor: theme.card,
       paddingVertical: 10,
       paddingHorizontal: 12,
-      borderRadius: 8,
+      borderRadius: 14,
       color: theme.text,
       borderWidth: 1,
-      borderColor: theme.border,
+      borderColor: isDark ? theme.borderStrong : theme.border,
       marginRight: 10,
     },
     saveButton: {
       backgroundColor: theme.primary,
       paddingVertical: 10,
       paddingHorizontal: 16,
-      borderRadius: 8,
+      borderRadius: 999,
     },
     saveButtonText: {
       color: 'white',

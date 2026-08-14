@@ -1,17 +1,19 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, Button, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/store';
 import { Colors } from '@/constants/Colors';
-import { resolveCodeApi, advanceCodeApi } from '@/lib/api';
+import { advanceCodeApi } from '@/lib/api';
+import { SpeedometerLoader } from '@/components/speedometer-loader';
 
 export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { citas, entregarCita, showToast, tema } = useApp();
+  const { showToast, tema } = useApp();
   const theme = Colors[tema];
+  const styles = useMemo(() => getStyles(tema), [tema]);
   const router = useRouter();
 
   if (!permission) {
@@ -24,7 +26,9 @@ export default function ScannerScreen() {
         <Text style={{ textAlign: 'center', color: theme.text, marginBottom: 20 }}>
           Necesitamos tu permiso para usar la cámara
         </Text>
-        <Button onPress={requestPermission} title="Otorgar Permiso" />
+        <TouchableOpacity style={styles.requestButton} onPress={requestPermission}>
+          <Text style={styles.requestButtonText}>Otorgar permiso</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -47,25 +51,8 @@ export default function ScannerScreen() {
       showToast(msg);
       router.back();
     } catch (err: any) {
-      // Fallback local logic if offline/test
-      const idCita = code;
-      const cita = citas.find(c => c.id === idCita || c.code === idCita);
-
-      if (!cita) {
-        showToast(err?.message || 'Código QR no válido o cita no encontrada');
-        setTimeout(() => { setScanned(false); setLoading(false); }, 2000);
-        return;
-      }
-
-      if (cita.estado !== 'listo_entrega' && cita.estado !== 'confirmada' && cita.estado !== 'pendiente') {
-        showToast(`La cita está en estado: ${cita.estado}`);
-        setTimeout(() => { setScanned(false); setLoading(false); }, 2000);
-        return;
-      }
-
-      entregarCita(cita.id);
-      showToast('Auto entregado correctamente');
-      router.back();
+      showToast(err?.message || 'Código QR no válido o cita no encontrada');
+      setTimeout(() => { setScanned(false); setLoading(false); }, 2000);
     } finally {
       setLoading(false);
     }
@@ -86,9 +73,13 @@ export default function ScannerScreen() {
         <Text style={styles.promptText}>
           {loading ? 'Procesando código...' : 'Apunta al código QR del cliente'}
         </Text>
-        {loading && <ActivityIndicator size="large" color="#ffffff" style={{ marginTop: 16 }} />}
+        {loading && (
+          <View style={styles.processingLoader}>
+            <SpeedometerLoader compact size={46} accentColor="#ffffff" trackColor="rgba(255,255,255,0.28)" />
+          </View>
+        )}
         {scanned && !loading && (
-          <TouchableOpacity style={[styles.button, { backgroundColor: theme.primary }]} onPress={() => setScanned(false)}>
+          <TouchableOpacity style={styles.button} onPress={() => setScanned(false)}>
             <Text style={styles.buttonText}>Toca para escanear de nuevo</Text>
           </TouchableOpacity>
         )}
@@ -97,40 +88,60 @@ export default function ScannerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (tema: 'claro' | 'oscuro') => {
+  const theme = Colors[tema];
+  return StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.56)',
+    paddingHorizontal: 24,
   },
   scanArea: {
-    width: 250,
-    height: 250,
-    borderWidth: 2,
-    borderColor: '#00ff00',
+    width: 264,
+    height: 264,
+    borderWidth: 4,
+    borderColor: '#ffffff',
+    borderRadius: 28,
     backgroundColor: 'transparent',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   promptText: {
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: 10,
-    borderRadius: 8,
+    backgroundColor: theme.primary,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 999,
+    overflow: 'hidden',
+    textAlign: 'center',
   },
   button: {
     marginTop: 20,
-    padding: 15,
-    borderRadius: 8,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    borderRadius: 999,
+    backgroundColor: theme.primary,
   },
   buttonText: {
     color: 'white',
-    fontWeight: 'bold',
-  }
-});
+    fontWeight: '900',
+  },
+  processingLoader: { marginTop: 18 },
+  requestButton: {
+    backgroundColor: theme.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 15,
+    borderRadius: 999,
+  },
+  requestButtonText: { color: '#ffffff', fontSize: 15, fontWeight: '900' },
+  });
+};

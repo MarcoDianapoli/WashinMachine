@@ -40,10 +40,12 @@ const styles = StyleSheet.create({
     top: 60,
     left: 20,
     right: 20,
-    backgroundColor: Brand.success,
+    backgroundColor: Brand.red,
     paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Brand.white,
     zIndex: 9999,
     alignItems: 'center',
     shadowColor: '#000',
@@ -55,6 +57,6 @@ const styles = StyleSheet.create({
   text: {
     color: Brand.white,
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '800',
   },
 })

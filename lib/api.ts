@@ -33,25 +33,31 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
 
-  if (response.status === 204) {
-    return {} as T;
+    if (response.status === 204) {
+      return {} as T;
+    }
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const errorMsg = Array.isArray(data?.message)
+        ? data.message.join(', ')
+        : data?.message || data?.error || `Error ${response.status}`;
+      throw new ApiError(errorMsg, response.status);
+    }
+
+    return data as T;
+  } catch (err: any) {
+    if (err instanceof ApiError) throw err;
+    const msg = err?.message || 'Error de conexión con el servidor';
+    throw new ApiError(msg, 0);
   }
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    const errorMsg = Array.isArray(data?.message)
-      ? data.message.join(', ')
-      : data?.message || data?.error || `Error ${response.status}`;
-    throw new ApiError(errorMsg, response.status);
-  }
-
-  return data as T;
 }
 
 // ── Auth Endpoints ─────────────────────────────────────────────────────────────
@@ -59,7 +65,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 export interface ApiAuthResponse {
   token: string;
   user: {
-    id: string;
+    _id?: string;
+    id?: string;
     name: string;
     email: string;
     role: 'admin' | 'washer' | 'client';
@@ -75,7 +82,7 @@ export async function loginApi(email: string, password: string): Promise<ApiAuth
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
-  if (res.token) setApiToken(res.token);
+  if (res?.token) setApiToken(res.token);
   return res;
 }
 
@@ -84,7 +91,7 @@ export async function registerApi(name: string, email: string, password: string,
     method: 'POST',
     body: JSON.stringify({ name, email, password, phone }),
   });
-  if (res.token) setApiToken(res.token);
+  if (res?.token) setApiToken(res.token);
   return res;
 }
 
@@ -93,7 +100,7 @@ export async function googleLoginApi(credential: string): Promise<ApiAuthRespons
     method: 'POST',
     body: JSON.stringify({ credential }),
   });
-  if (res.token) setApiToken(res.token);
+  if (res?.token) setApiToken(res.token);
   return res;
 }
 
@@ -217,6 +224,7 @@ export interface ApiAppointment {
   packageId: string;
   packageName: string;
   price: number;
+  packageDuration?: string;
   date: string;
   time: string;
   status: 'pending' | 'confirmed' | 'in_progress' | 'ready_for_pickup' | 'completed' | 'cancelled';
@@ -224,6 +232,11 @@ export interface ApiAppointment {
     id?: string;
     name?: string;
     phone?: string;
+  };
+  customer?: {
+    name?: string;
+    phone?: string;
+    pickupPerson?: string;
   };
   vehicle: {
     plate?: string;
@@ -235,6 +248,9 @@ export interface ApiAppointment {
   };
   notes?: string;
   washerName?: string;
+  paid?: boolean;
+  paymentMethod?: 'cash' | 'transfer' | 'card' | 'mercadopago';
+  mpPaymentId?: string;
 }
 
 export async function createAppointmentApi(data: CreateAppointmentInput): Promise<ApiAppointment> {
@@ -266,6 +282,52 @@ export async function updateAppointmentStatusApi(id: string, status: string): Pr
   return request<ApiAppointment>(`/appointments/${id}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
+  });
+}
+
+export interface ApiNotification {
+  _id: string;
+  type:
+    | 'appointment_created'
+    | 'appointment_confirmed'
+    | 'appointment_in_progress'
+    | 'appointment_ready'
+    | 'appointment_completed'
+    | 'appointment_cancelled'
+    | 'appointment_reminder'
+    | 'promotion'
+    | 'system';
+  title: string;
+  body: string;
+  appointmentId?: string;
+  readDate?: string;
+  creationDate: string;
+}
+
+export async function getNotificationsApi(limit = 50): Promise<ApiNotification[]> {
+  return request<ApiNotification[]>(`/notifications?limit=${limit}`, {
+    method: 'GET',
+  });
+}
+
+// ── Payment Endpoints ──────────────────────────────────────────────────────────
+
+export async function getPaymentStatusApi(): Promise<{ enabled: boolean }> {
+  return request<{ enabled: boolean }>('/payments/status', {
+    method: 'GET',
+  });
+}
+
+export async function createCheckoutApi(appointmentId: string): Promise<{ preferenceId: string; initPoint: string }> {
+  return request<{ preferenceId: string; initPoint: string }>(`/payments/checkout/${appointmentId}`, {
+    method: 'POST',
+  });
+}
+
+export async function confirmPaymentApi(appointmentId: string, paymentId: string): Promise<ApiAppointment> {
+  return request<ApiAppointment>(`/payments/confirm/${appointmentId}`, {
+    method: 'POST',
+    body: JSON.stringify({ paymentId }),
   });
 }
 

@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/store';
 import { Colors } from '@/constants/Colors';
+import { SpeedometerLoader } from '@/components/speedometer-loader';
 
 export default function EditarDatosPersonalesScreen() {
   const router = useRouter();
@@ -66,9 +67,12 @@ export default function EditarDatosPersonalesScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Text style={styles.backText}>← Volver</Text>
+            <Text style={styles.backText}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Datos Personales</Text>
+          <View style={styles.headerCopy}>
+            <Text style={styles.eyebrow}>PERFIL</Text>
+            <Text style={styles.title}>Datos personales</Text>
+          </View>
         </View>
 
         <Text style={styles.label}>NOMBRE COMPLETO</Text>
@@ -120,7 +124,11 @@ export default function EditarDatosPersonalesScreen() {
         />
 
         <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={guardar} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Guardar datos</Text>}
+          {loading ? (
+            <SpeedometerLoader compact size={28} accentColor="#ffffff" trackColor="rgba(255,255,255,0.28)" />
+          ) : (
+            <Text style={styles.buttonText}>Guardar datos</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -129,22 +137,25 @@ export default function EditarDatosPersonalesScreen() {
 
 const getStyles = (tema: 'claro' | 'oscuro') => {
   const theme = Colors[tema];
+  const isDark = tema === 'oscuro';
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background },
-    scrollContent: { paddingHorizontal: 20, paddingVertical: 40, flexGrow: 1 },
+    scrollContent: { paddingHorizontal: 18, paddingTop: 28, paddingBottom: 40, flexGrow: 1 },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 40,
-      marginTop: 20,
+      gap: 14,
+      marginBottom: 32,
     },
-    backBtn: { padding: 10, position: 'absolute', zIndex: 1, left: -10 },
-    backText: { color: theme.primary, fontSize: 16, fontWeight: '600' },
+    backBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.primary },
+    backText: { color: '#ffffff', fontSize: 22, fontWeight: '800' },
+    headerCopy: { flex: 1 },
+    eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 2.4, color: theme.textMuted },
     title: {
-      flex: 1,
-      fontSize: 22,
-      fontWeight: 'bold',
-      textAlign: 'center',
+      fontSize: 32,
+      lineHeight: 36,
+      fontWeight: '900',
+      letterSpacing: -0.9,
       color: theme.text,
     },
     label: { 
@@ -159,12 +170,12 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       width: '100%',
       paddingVertical: 14,
       paddingHorizontal: 16,
-      borderRadius: 8,
+      borderRadius: 16,
       fontSize: 15,
       marginBottom: 24,
       color: theme.text,
       borderWidth: 1,
-      borderColor: theme.border,
+      borderColor: isDark ? theme.borderStrong : theme.border,
     },
     textArea: {
       height: 100,
@@ -174,12 +185,12 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       backgroundColor: theme.primary, 
       width: '100%',
       paddingVertical: 16, 
-      borderRadius: 8, 
+      borderRadius: 999,
       alignItems: 'center',
       marginTop: 10,
       marginBottom: 30,
     },
     buttonDisabled: { opacity: 0.5 },
-    buttonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+    buttonText: { color: 'white', fontSize: 16, fontWeight: '900' },
   });
 };

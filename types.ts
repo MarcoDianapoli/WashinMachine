@@ -39,9 +39,14 @@ export interface Cita {
   paqueteNombre: string;
   fecha: string;
   hora: string;
+  precio?: number;
+  duracion?: string;
   cliente: Cliente;
   estado: 'pendiente' | 'confirmada' | 'completada' | 'cancelada' | 'en_proceso' | 'listo_entrega';
   washerName?: string;
+  paid?: boolean;
+  paymentMethod?: string;
+  mpPaymentId?: string;
 }
 
 export interface AuthUser {
@@ -55,4 +60,3 @@ export interface AuthUser {
   direccion?: string;
   notas?: string;
 }
-

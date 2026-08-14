@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert, Modal, FlatList, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert, Modal, FlatList, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import type { Vehiculo } from '@/types';
 import { useApp } from '@/store';
 import { Colors } from '@/constants/Colors';
+import { SpeedometerLoader } from '@/components/speedometer-loader';
 
 interface MakeResult { Make_ID: number; Make_Name: string }
 interface ModelResult { Model_ID: number; Model_Name: string }
@@ -512,9 +513,12 @@ export default function EditarVehiculoScreen() {
       <View style={[styles.container, { padding: 20, paddingTop: 40 }]}>
         <View style={styles.headerRow}>
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Text style={styles.backText}>← Volver</Text>
+            <Text style={styles.backText}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Mis Vehículos</Text>
+          <View style={styles.headerCopy}>
+            <Text style={styles.eyebrow}>GARAGE</Text>
+            <Text style={styles.title}>Mis Vehículos</Text>
+          </View>
         </View>
 
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
@@ -536,12 +540,12 @@ export default function EditarVehiculoScreen() {
                       </Text>
                     </View>
                   </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
-                    <TouchableOpacity onPress={() => eliminarVehiculo(index, veh._id)} style={{ padding: 8, backgroundColor: theme.danger + '20', borderRadius: 8 }}>
-                      <Text style={{ color: theme.danger, fontWeight: '600' }}>Eliminar</Text>
+                  <View style={styles.vehicleActions}>
+                    <TouchableOpacity onPress={() => eliminarVehiculo(index, veh._id)} style={styles.deleteAction}>
+                      <Text style={styles.deleteActionText}>Eliminar</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => enterEditMode(veh, index)} style={{ padding: 8, backgroundColor: theme.primary + '20', borderRadius: 8 }}>
-                      <Text style={{ color: theme.primary, fontWeight: '600' }}>Editar</Text>
+                    <TouchableOpacity onPress={() => enterEditMode(veh, index)} style={styles.editAction}>
+                      <Text style={styles.editActionText}>Editar</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -567,9 +571,12 @@ export default function EditarVehiculoScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerRow}>
           <TouchableOpacity style={styles.backBtn} onPress={() => setViewMode('list')}>
-            <Text style={styles.backText}>← Volver</Text>
+            <Text style={styles.backText}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>{editingIndex !== null ? 'Editar Vehículo' : 'Nuevo Vehículo'}</Text>
+          <View style={styles.headerCopy}>
+            <Text style={styles.eyebrow}>GARAGE</Text>
+            <Text style={styles.title}>{editingIndex !== null ? 'Editar Vehículo' : 'Nuevo Vehículo'}</Text>
+          </View>
         </View>
 
         <Text style={styles.sectionTitle}>Vehículo</Text>
@@ -581,7 +588,7 @@ export default function EditarVehiculoScreen() {
               <Text style={styles.uploadHint}>Foto subida por ti</Text>
             </View>
           ) : searching || loadingImage ? (
-            <ActivityIndicator size="large" color="#dc2626" />
+            <SpeedometerLoader size={92} message="Buscando imagen" />
           ) : selectedImage && !imageLoadFailed ? (
             <View style={styles.imageWrapper}>
               <Image source={{ uri: selectedImage.dataUri }} style={styles.vehicleImage} resizeMode="contain" />
@@ -680,7 +687,11 @@ export default function EditarVehiculoScreen() {
         <TextInput style={styles.input} placeholder="Color del vehículo" value={vehiculo.color} onChangeText={(t) => setVehiculo((p) => ({ ...p, color: t }))} />
 
         <TouchableOpacity style={[styles.button, saving && { opacity: 0.6 }]} onPress={guardar} disabled={saving}>
-          {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Guardar datos</Text>}
+          {saving ? (
+            <SpeedometerLoader compact size={28} accentColor="#ffffff" trackColor="rgba(255,255,255,0.28)" />
+          ) : (
+            <Text style={styles.buttonText}>Guardar datos</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
 
@@ -695,7 +706,9 @@ export default function EditarVehiculoScreen() {
             </View>
             {modalConfig.mode !== 'año' && <TextInput style={styles.searchInput} placeholder="Buscar..." value={search} onChangeText={setSearch} autoCapitalize="none" autoCorrect={false} />}
             {loading && modalConfig.mode !== 'año' ? (
-              <ActivityIndicator size="large" color="#dc2626" style={{ marginTop: 40 }} />
+              <View style={styles.modalLoader}>
+                <SpeedometerLoader size={118} message="Cargando opciones" />
+              </View>
             ) : (
               <FlatList
                 key={modalConfig.mode}
@@ -728,42 +741,51 @@ export default function EditarVehiculoScreen() {
 
 const getStyles = (tema: 'claro' | 'oscuro') => {
   const theme = Colors[tema];
+  const isDark = tema === 'oscuro';
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background },
-    scrollContent: { padding: 20, paddingBottom: 40, paddingTop: 40 },
-    headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 30 },
-    backBtn: { padding: 10, position: 'absolute', zIndex: 1, left: -10 },
-    backText: { color: theme.primary, fontSize: 16, fontWeight: '600' },
-    title: { flex: 1, fontSize: 22, fontWeight: 'bold', textAlign: 'center', color: theme.text },
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 16, marginTop: 8, color: theme.text },
+    scrollContent: { paddingHorizontal: 18, paddingBottom: 40, paddingTop: 28 },
+    headerRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 30 },
+    backBtn: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.primary },
+    backText: { color: '#ffffff', fontSize: 22, fontWeight: '800' },
+    headerCopy: { flex: 1 },
+    eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 2.4, color: theme.textMuted },
+    title: { fontSize: 30, lineHeight: 34, fontWeight: '900', letterSpacing: -0.8, color: theme.text },
+    sectionTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 16, marginTop: 8, color: theme.textMuted },
     label: { fontSize: 12, fontWeight: 'bold', color: theme.textMuted, marginBottom: 8, letterSpacing: 1 },
-    input: { backgroundColor: theme.card, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, fontSize: 16, marginBottom: 16, borderWidth: 1, borderColor: theme.border, color: theme.text },
-    pickerField: { backgroundColor: theme.card, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 10, marginBottom: 16, borderWidth: 1, borderColor: theme.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    input: { backgroundColor: theme.card, paddingHorizontal: 16, paddingVertical: 13, borderRadius: 16, fontSize: 16, marginBottom: 16, borderWidth: 1, borderColor: isDark ? theme.borderStrong : theme.border, color: theme.text },
+    pickerField: { backgroundColor: theme.card, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: isDark ? theme.borderStrong : theme.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     pickerDisabled: { opacity: 0.5 },
     pickerText: { fontSize: 16, color: theme.text },
     placeholder: { color: theme.textMuted },
     arrow: { fontSize: 12, color: theme.textMuted },
     arrowDisabled: { color: theme.textMuted },
-    button: { backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 10, alignItems: 'center', marginTop: 8 },
+    button: { backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 999, alignItems: 'center', marginTop: 8 },
     buttonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
-    generateBtn: { backgroundColor: theme.primary, paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginBottom: 16 },
+    generateBtn: { backgroundColor: theme.primary, paddingVertical: 14, borderRadius: 999, alignItems: 'center', marginBottom: 16 },
     generateBtnText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
     changeBtn: { alignItems: 'center', marginBottom: 16 },
     changeBtnText: { color: theme.primary, fontSize: 14, fontWeight: '600' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: theme.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%', paddingBottom: 30 },
+    modalContent: { backgroundColor: theme.card, borderTopLeftRadius: 26, borderTopRightRadius: 26, maxHeight: '82%', paddingBottom: 30 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingBottom: 0 },
     modalTitle: { fontSize: 20, fontWeight: 'bold', color: theme.text },
     modalClose: { fontSize: 16, color: theme.danger, fontWeight: '600' },
-    searchInput: { backgroundColor: theme.border, margin: 16, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, fontSize: 16, color: theme.text },
+    searchInput: { backgroundColor: theme.surfaceMuted, margin: 16, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, borderWidth: 1, borderColor: theme.borderStrong, fontSize: 16, color: theme.text },
     modalItem: { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.border },
     modalItemText: { fontSize: 16, color: theme.text },
+    modalLoader: { paddingTop: 34, paddingBottom: 28 },
     emptyText: { textAlign: 'center', color: theme.textMuted, marginTop: 40, fontSize: 16 },
     imageContainer: { alignItems: 'center', marginBottom: 12, minHeight: 160, justifyContent: 'center', width: '100%' },
     imageWrapper: { width: '100%', alignItems: 'center' },
-    vehicleImage: { width: '100%', height: 200, borderRadius: 10, backgroundColor: theme.card },
+    vehicleImage: { width: '100%', height: 200, borderRadius: 20, backgroundColor: theme.card },
     vehicleEmoji: { fontSize: 72, textAlign: 'center' },
-    resumenCard: { backgroundColor: theme.card, borderRadius: 10, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: theme.border },
+    resumenCard: { backgroundColor: theme.card, borderRadius: 20, padding: 16, marginBottom: 16, borderWidth: isDark ? 1.5 : 1, borderColor: theme.borderStrong },
+    vehicleActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
+    deleteAction: { paddingHorizontal: 14, paddingVertical: 9, backgroundColor: theme.primarySoft, borderRadius: 999 },
+    deleteActionText: { color: theme.danger, fontWeight: '800' },
+    editAction: { paddingHorizontal: 16, paddingVertical: 9, backgroundColor: theme.primary, borderRadius: 999 },
+    editActionText: { color: '#ffffff', fontWeight: '800' },
     resumenRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 4 },
     resumenLabel: { fontSize: 13, color: theme.textMuted, fontWeight: '600', width: 50 },
     resumenValue: { fontSize: 14, color: theme.text, fontWeight: '500' },
@@ -779,20 +801,20 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     attribution: { fontSize: 10, color: theme.textMuted, textAlign: 'center', marginTop: 4, paddingHorizontal: 10 },
     errorText: { fontSize: 13, color: theme.danger, textAlign: 'center', marginTop: 8, paddingHorizontal: 16 },
     navRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 16, gap: 16 },
-    navBtn: { paddingVertical: 8, paddingHorizontal: 16, backgroundColor: theme.primary, borderRadius: 8 },
+    navBtn: { paddingVertical: 9, paddingHorizontal: 16, backgroundColor: theme.primary, borderRadius: 999 },
     navBtnText: { color: 'white', fontSize: 14, fontWeight: '600' },
     navCount: { fontSize: 14, color: theme.textMuted, fontWeight: '600' },
     uploadHint: { fontSize: 11, color: theme.textMuted, marginTop: 4 },
     manualOption: { padding: 16, borderTopWidth: 1, borderTopColor: theme.border, marginTop: 8 },
     manualOptionText: { fontSize: 15, color: theme.primary, fontWeight: '600', textAlign: 'center' },
     manualRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
-    manualConfirm: { backgroundColor: theme.primary, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10 },
+    manualConfirm: { backgroundColor: theme.primary, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 999 },
     manualConfirmText: { color: 'white', fontWeight: 'bold', fontSize: 15 },
     manualCancel: { paddingVertical: 10, paddingHorizontal: 12 },
     manualCancelText: { color: theme.textMuted, fontSize: 14 },
     uploadBtn: { alignItems: 'center', marginBottom: 16 },
     uploadBtnText: { color: theme.primary, fontSize: 14, fontWeight: '600' },
-    uploadBtnOutline: { borderWidth: 1.5, borderColor: theme.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginBottom: 16, borderStyle: 'dashed' },
+    uploadBtnOutline: { borderWidth: 1, borderColor: theme.borderStrong, borderRadius: 18, paddingVertical: 12, alignItems: 'center', marginBottom: 16, borderStyle: 'dashed' },
     uploadBtnOutlineText: { color: theme.primary, fontSize: 14, fontWeight: '600' },
   });
 };

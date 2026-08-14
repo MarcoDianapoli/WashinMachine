@@ -10,7 +10,6 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function InstallBanner() {
   const { tema } = useApp();
-  const theme = Colors[tema];
   const styles = useMemo(() => getStyles(tema), [tema]);
 
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
@@ -96,6 +95,7 @@ export function InstallBanner() {
 
 const getStyles = (tema: 'claro' | 'oscuro') => {
   const theme = Colors[tema];
+  const isDark = tema === 'oscuro';
   return StyleSheet.create({
     overlay: {
       flex: 1,
@@ -106,7 +106,7 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     },
     popup: {
       backgroundColor: theme.card,
-      borderRadius: 20,
+      borderRadius: 26,
       padding: 24,
       width: '100%',
       maxWidth: 360,
@@ -117,7 +117,7 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       shadowRadius: 16,
       elevation: 10,
       borderWidth: 1,
-      borderColor: theme.border,
+      borderColor: theme.borderStrong,
     },
     icon: {
       fontSize: 48,
@@ -125,7 +125,7 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     },
     title: {
       fontSize: 22,
-      fontWeight: 'bold',
+      fontWeight: '900',
       color: theme.text,
       textAlign: 'center',
       marginBottom: 8,
@@ -145,9 +145,9 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     dismissBtn: {
       flex: 1,
       paddingVertical: 14,
-      borderRadius: 12,
+      borderRadius: 999,
       borderWidth: 1,
-      borderColor: theme.border,
+      borderColor: isDark ? theme.borderStrong : theme.border,
       alignItems: 'center',
     },
     dismissText: {
@@ -158,7 +158,7 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     installBtn: {
       flex: 1,
       paddingVertical: 14,
-      borderRadius: 12,
+      borderRadius: 999,
       backgroundColor: theme.primary,
       alignItems: 'center',
     },

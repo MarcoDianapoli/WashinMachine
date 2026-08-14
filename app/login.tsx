@@ -1,18 +1,17 @@
 import { useState, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Switch, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Switch, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
 import { useApp } from '@/store';
 import { Colors } from '@/constants/Colors';
 import { Config } from '@/constants/Config';
-import { ApiError } from '@/lib/api';
+import { SpeedometerLoader } from '@/components/speedometer-loader';
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { loginWithEmail, loginWithGoogle, loginLavador, showToast, tema } = useApp();
+  const { loginWithEmail, loginWithGoogle, showToast, tema } = useApp();
   const theme = Colors[tema];
   const styles = useMemo(() => getStyles(tema), [tema]);
   
@@ -27,9 +26,7 @@ export default function LoginScreen() {
   }, []);
 
   const redirectUri = useMemo(() => {
-    return AuthSession.makeRedirectUri({
-      scheme: 'autolavado',
-    });
+    return 'https://auth.expo.io/@marcodianapoli/autolavado';
   }, []);
 
   const iniciarSesion = async () => {
@@ -39,28 +36,19 @@ export default function LoginScreen() {
     }
     
     const userEmail = email.trim().toLowerCase();
-    
-    if ((userEmail === 'admin@monkey.com' || userEmail === 'admin@test.com' || userEmail.startsWith('lavador')) && loginLavador(password)) {
-      showToast('Bienvenido al área de lavadores');
-      router.replace('/lavador');
-      return;
-    }
 
     setLoading(true);
     try {
       const user = await loginWithEmail(userEmail, password, mantenerSesion);
       showToast(`Bienvenido ${user.nombre || ''}`);
-      if (user.rol === 'lavador') {
+      if (user.rol === 'lavador' || user.rol === 'admin') {
         router.replace('/lavador');
       } else {
         router.replace('/(tabs)');
       }
     } catch (err: any) {
-      if (err instanceof ApiError) {
-        showToast(err.message || 'Credenciales incorrectas');
-      } else {
-        showToast('Error al conectar con el servidor');
-      }
+      const errorText = err?.message || (typeof err === 'string' ? err : 'Error al iniciar sesión');
+      showToast(errorText);
     } finally {
       setLoading(false);
     }
@@ -125,6 +113,10 @@ export default function LoginScreen() {
           />
         </View>
 
+        <Text style={styles.eyebrow}>MONKEY AUTO SPA</Text>
+        <Text style={styles.title}>Bienvenido</Text>
+        <Text style={styles.subtitle}>Agenda, consulta y recoge tu auto desde un solo lugar.</Text>
+
         <Text style={styles.label}>EMAIL</Text>
         <TextInput
           style={styles.input}
@@ -165,7 +157,7 @@ export default function LoginScreen() {
           disabled={!email.trim() || !password.trim() || loading}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <SpeedometerLoader compact size={28} accentColor="#ffffff" trackColor="rgba(255,255,255,0.28)" />
           ) : (
             <Text style={styles.buttonText}>Iniciar Sesión</Text>
           )}
@@ -178,7 +170,7 @@ export default function LoginScreen() {
           disabled={googleLoading}
         >
           {googleLoading ? (
-            <ActivityIndicator color={theme.text} />
+            <SpeedometerLoader compact size={28} accentColor={theme.primary} trackColor={theme.border} />
           ) : (
             <View style={styles.googleContent}>
               <Text style={styles.googleIcon}>G</Text>
@@ -197,6 +189,7 @@ export default function LoginScreen() {
 
 const getStyles = (tema: 'claro' | 'oscuro') => {
   const theme = Colors[tema];
+  const isDark = tema === 'oscuro';
   return StyleSheet.create({
     container: { 
       flex: 1, 
@@ -204,20 +197,23 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       backgroundColor: theme.background 
     },
     content: { 
-      paddingHorizontal: 30, 
+      paddingHorizontal: 24,
       alignItems: 'center' 
     },
     logoContainer: {
-      width: 170,
-      height: 170,
+      width: 126,
+      height: 126,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 20,
+      marginBottom: 10,
     },
     logo: {
-      width: 170,
-      height: 170,
+      width: 126,
+      height: 126,
     },
+    eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 2.8, color: theme.primary },
+    title: { fontSize: 40, lineHeight: 44, fontWeight: '900', letterSpacing: -1.3, color: theme.text, marginTop: 2 },
+    subtitle: { maxWidth: 310, fontSize: 13, lineHeight: 19, color: theme.textMuted, textAlign: 'center', marginTop: 7, marginBottom: 24 },
     label: { 
       fontSize: 12, 
       fontWeight: 'bold', 
@@ -229,12 +225,12 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       backgroundColor: theme.card,
       width: '100%',
       paddingVertical: 14,
-      borderRadius: 6,
+      borderRadius: 16,
       fontSize: 14,
       marginBottom: 16,
       color: theme.text,
       borderWidth: 1,
-      borderColor: theme.border,
+      borderColor: isDark ? theme.borderStrong : theme.border,
     },
     switchContainer: {
       flexDirection: 'row',
@@ -252,17 +248,17 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       backgroundColor: theme.primary, 
       width: '100%',
       paddingVertical: 16, 
-      borderRadius: 6, 
+      borderRadius: 999,
       alignItems: 'center',
       marginBottom: 12,
     },
     googleButton: {
       backgroundColor: theme.card,
-      borderColor: theme.border,
+      borderColor: theme.borderStrong,
       borderWidth: 1,
       width: '100%',
       paddingVertical: 14,
-      borderRadius: 6,
+      borderRadius: 999,
       alignItems: 'center',
       marginBottom: 24,
     },

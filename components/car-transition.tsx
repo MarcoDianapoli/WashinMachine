@@ -45,7 +45,7 @@ export function CarTransitionProvider({ children }: { children: React.ReactNode 
   const prevSegments = useRef(segments.join('/'));
   const segmentsRef = useRef(segments);
   segmentsRef.current = segments;
-  const { tamanoVehiculo } = useApp();
+  const { tamanoVehiculo, tema } = useApp();
 
   const [visible, setVisible] = useState(false);
   const lastIdx = useRef(tabIdx(segments) ?? 1);
@@ -105,6 +105,7 @@ export function CarTransitionProvider({ children }: { children: React.ReactNode 
           <Animated.View
             style={[
               styles.car,
+              tema === 'oscuro' && styles.carDark,
               {
                 bottom: insets.bottom + 55,
                 transform: [
@@ -136,14 +137,18 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     backgroundColor: '#fff',
     borderWidth: 2,
-    borderColor: '#dc2626',
+    borderColor: '#3a3a42',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#dc2626',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.35,
     shadowRadius: 6,
     elevation: 8,
+  },
+  carDark: {
+    backgroundColor: '#ef3b42',
+    borderColor: '#ffffff',
   },
   emoji: { fontSize: 26, lineHeight: 30, textAlign: 'center' },
 });

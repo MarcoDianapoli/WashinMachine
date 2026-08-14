@@ -1,8 +1,15 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { Cliente, Cita, Vehiculo, AuthUser } from '@/types';
-import { loadPersistedData, savePersistedData } from '@/lib/storage';
-import { requestNotificationPermissions, triggerLocalNotification } from '@/lib/notifications';
+import { loadPersistedData, savePersistedData, getPersistedToken, setPersistedToken } from '@/lib/storage';
+import {
+  presentIncomingNotification,
+  requestNotificationPermissions,
+  resetNotificationTracking,
+  startForegroundMonitoring,
+  stopForegroundMonitoring,
+  syncServerNotifications,
+} from '@/lib/notifications';
 import {
   setApiToken,
   getApiToken,
@@ -20,8 +27,10 @@ import {
   getAppointmentsApi,
   createAppointmentApi,
   updateAppointmentStatusApi,
+  getPaymentStatusApi,
   ApiVehicle,
   ApiAppointment,
+  ApiNotification,
   CreateAppointmentInput,
   API_BASE_URL,
 } from '@/lib/api';
@@ -85,6 +94,38 @@ function vehicleTypeToTamano(type: string | null): TamanoVehiculo {
   return 'grande';
 }
 
+function mapApiRole(role?: string): AuthUser['rol'] {
+  if (role === 'washer') return 'lavador';
+  if (role === 'admin') return 'admin';
+  return 'cliente';
+}
+
+function mapApiUser(
+  user: {
+    _id?: string;
+    id?: string;
+    name?: string;
+    email?: string;
+    role?: string;
+    phone?: string;
+    pickupPerson?: string;
+    address?: string;
+    notes?: string;
+  },
+  fallback: { id?: string; name?: string; email?: string; phone?: string } = {},
+): AuthUser {
+  return {
+    id: user._id || user.id || fallback.id || `user_${Date.now()}`,
+    email: user.email || fallback.email || '',
+    nombre: user.name || fallback.name || 'Cliente',
+    rol: mapApiRole(user.role),
+    telefono: user.phone || fallback.phone,
+    pickupPerson: user.pickupPerson,
+    direccion: user.address,
+    notas: user.notes,
+  };
+}
+
 function mapApiVehicleToVehiculo(v: ApiVehicle): Vehiculo {
   let tipo = 'Mediano';
   if (v.vehicleType === 'small') tipo = 'Sedán / Chico';
@@ -113,6 +154,18 @@ function mapApiAppointmentToCita(a: ApiAppointment): Cita {
   else if (a.status === 'completed') estado = 'completada';
   else if (a.status === 'cancelled') estado = 'cancelada';
 
+  const clientName = a.client?.name || a.customer?.name || '';
+  const clientPhone = a.client?.phone || a.customer?.phone || '';
+
+  const vehicle: Vehiculo | undefined = a.vehicle ? {
+    placa: a.vehicle.plate || '',
+    marca: a.vehicle.make || '',
+    modelo: a.vehicle.model || '',
+    color: a.vehicle.color || '',
+    anio: a.vehicle.year || '',
+    tipoVehiculo: a.vehicle.vehicleType || '',
+  } : undefined;
+
   return {
     id: a._id,
     code: a.code,
@@ -120,20 +173,20 @@ function mapApiAppointmentToCita(a: ApiAppointment): Cita {
     paqueteNombre: a.packageName || 'Lavado',
     fecha: a.date,
     hora: a.time,
+    precio: a.price,
+    duracion: a.packageDuration,
     estado,
     cliente: {
-      nombre: a.client?.name || 'Cliente',
-      telefono: a.client?.phone || '',
-      vehiculo: a.vehicle ? [{
-        placa: a.vehicle.plate || '',
-        marca: a.vehicle.make || '',
-        modelo: a.vehicle.model || '',
-        color: a.vehicle.color || '',
-        anio: a.vehicle.year || '',
-        tipoVehiculo: a.vehicle.vehicleType || '',
-      }] : [],
-      personaRecoge: a.notes || '',
+      nombre: clientName,
+      telefono: clientPhone,
+      vehiculo: vehicle,
+      vehiculos: vehicle ? [vehicle] : [],
+      personaRecoge: a.customer?.pickupPerson || '',
+      notas: a.notes,
     },
+    paid: a.paid,
+    paymentMethod: a.paymentMethod,
+    mpPaymentId: a.mpPaymentId,
   };
 }
 
@@ -160,7 +213,6 @@ interface AppState {
   loginWithEmail: (email: string, password: string, mantenerSesion?: boolean) => Promise<AuthUser>;
   registerWithEmail: (name: string, email: string, password: string, phone?: string) => Promise<AuthUser>;
   loginWithGoogle: (credential: string) => Promise<AuthUser>;
-  loginLavador: (codigo: string) => boolean;
   logout: () => Promise<void>;
   actualizarPerfil: (datos: { name?: string; phone?: string; pickupPerson?: string; address?: string; notes?: string }) => Promise<void>;
   actualizarPerfilLavador: (datos: { telefono?: string; fotoPerfil?: string }) => void;
@@ -176,6 +228,9 @@ interface AppState {
   tomarCita: (id: string) => void;
   terminarCita: (id: string) => void;
   entregarCita: (id: string) => void;
+
+  paymentsEnabled: boolean;
+  checkPaymentsEnabled: () => Promise<void>;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -190,6 +245,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [mantenerSesion, setMantenerSesion] = useState<boolean>(true);
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
+  const [paymentsEnabled, setPaymentsEnabled] = useState<boolean>(false);
   const loaded = useRef(false);
   const previousCitasRef = useRef<Map<string, string>>(new Map());
 
@@ -237,36 +293,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch {}
   };
 
-  const syncVehicles = async () => {
+  const syncVehicles = async (profile: AuthUser | null = authUser) => {
     if (!getApiToken()) return;
     try {
       const list = await getVehiclesApi();
       const vehiculosMapped = list.map(mapApiVehicleToVehiculo);
       setCliente((prev) => ({
-        nombre: prev?.nombre || authUser?.nombre || 'Cliente',
-        telefono: prev?.telefono || authUser?.telefono || '',
+        nombre: profile?.nombre || prev?.nombre || 'Cliente',
+        telefono: profile?.telefono || prev?.telefono || '',
         vehiculos: vehiculosMapped,
-        personaRecoge: prev?.personaRecoge || '',
-        direccion: prev?.direccion || '',
-        notas: prev?.notas || '',
+        personaRecoge: profile?.pickupPerson || prev?.personaRecoge || '',
+        direccion: profile?.direccion || prev?.direccion || '',
+        notas: profile?.notas || prev?.notas || '',
       }));
     } catch {}
-  };
-
-  const checkStatusChangesAndNotify = (newList: Cita[]) => {
-    newList.forEach((c) => {
-      const prevStatus = previousCitasRef.current.get(c.id);
-      if (prevStatus && prevStatus !== c.estado) {
-        if (c.estado === 'listo_entrega') {
-          triggerLocalNotification('Monkey Auto Spa ✨', '¡Tu vehículo está listo para entrega! Puedes pasar a recogerlo.');
-        } else if (c.estado === 'en_proceso') {
-          triggerLocalNotification('Monkey Auto Spa 🧼', 'Tu servicio de lavado ha comenzado.');
-        } else if (c.estado === 'completada') {
-          triggerLocalNotification('Monkey Auto Spa 🚗', '¡Auto entregado exitosamente!');
-        }
-      }
-      previousCitasRef.current.set(c.id, c.estado);
-    });
   };
 
   const syncAppointments = async () => {
@@ -274,69 +314,80 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const list = await getAppointmentsApi();
       const mapped = list.map(mapApiAppointmentToCita);
-      checkStatusChangesAndNotify(mapped);
       setCitas(mapped);
     } catch {}
+  };
+
+  const checkPaymentsEnabled = async () => {
+    try {
+      const res = await getPaymentStatusApi();
+      setPaymentsEnabled(res.enabled);
+    } catch {
+      setPaymentsEnabled(false);
+    }
   };
 
   useEffect(() => {
     fetchSettings();
     requestNotificationPermissions();
+    checkPaymentsEnabled();
 
-    loadPersistedData<PersistedData>().then(async (d) => {
-      if (d) {
-        if (d.cliente) {
-          const c = d.cliente;
-          if (!c.vehiculos) {
-            c.vehiculos = c.vehiculo && c.vehiculo.modelo ? [c.vehiculo] : [];
+    (async () => {
+      try {
+        const savedToken = await getPersistedToken();
+        const d = await loadPersistedData<PersistedData>();
+
+        if (d) {
+          if (d.cliente) {
+            const c = d.cliente;
+            if (!c.vehiculos) {
+              c.vehiculos = c.vehiculo && c.vehiculo.modelo ? [c.vehiculo] : [];
+            }
+            setCliente(c);
           }
-          setCliente(c);
+          if (d.citas) setCitas(d.citas);
+          if (d.vehicleTypeLabel) setVehicleTypeLabel(d.vehicleTypeLabel);
+          if (d.tamanoVehiculo) setTamano(d.tamanoVehiculo);
+          if (d.tema) setTema(d.tema);
+          if (d.mantenerSesion !== undefined) setMantenerSesion(d.mantenerSesion);
         }
-        if (d.citas) setCitas(d.citas);
-        if (d.vehicleTypeLabel) setVehicleTypeLabel(d.vehicleTypeLabel);
-        if (d.tamanoVehiculo) setTamano(d.tamanoVehiculo);
-        if (d.tema) setTema(d.tema);
-        if (d.mantenerSesion !== undefined) setMantenerSesion(d.mantenerSesion);
 
-        const savedToken = d.authToken || null;
-        if (savedToken) {
-          setApiToken(savedToken);
-          setToken(savedToken);
+        const validToken = savedToken;
+        if (validToken) {
+          setApiToken(validToken);
+          setToken(validToken);
           try {
             const user = await getMeApi();
-            const mappedUser: AuthUser = {
-              id: user._id,
-              email: user.email,
-              nombre: user.name,
-              rol: user.role === 'client' ? 'cliente' : user.role,
-              telefono: user.phone,
-              pickupPerson: user.pickupPerson,
-              direccion: user.address,
-              notas: user.notes,
-            };
+            const mappedUser = mapApiUser(user);
             setAuthUser(mappedUser);
-            await syncVehicles();
+            await syncVehicles(mappedUser);
             await syncAppointments();
           } catch (err) {
-            setApiToken(null);
+            // Token expired or invalid
+            await setPersistedToken(null);
             setToken(null);
             setAuthUser(null);
           }
-        } else if (d.authUser) {
-          setAuthUser(d.authUser);
         }
-      }
+      } catch {}
+
       loaded.current = true;
       setIsAuthChecking(false);
-    });
+    })();
   }, []);
+
+  useEffect(() => {
+    if (!authUser || !token || authUser.rol !== 'cliente') return;
+
+    syncServerNotifications().catch(() => {});
+    startForegroundMonitoring().catch(() => {});
+  }, [authUser?.id, authUser?.rol, token]);
 
   // ── TIEMPO REAL: WebSockets (Socket.io) y Polling Continuo ─────────────────
   useEffect(() => {
     const currentToken = token || getApiToken();
     if (!currentToken || !authUser) return;
 
-    // 1. Conexión WebSocket en tiempo real con Socket.io
     const socket: Socket = io(`${API_BASE_URL}/realtime`, {
       auth: { token: currentToken },
       transports: ['websocket', 'polling'],
@@ -356,10 +407,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       syncAppointments();
     });
 
-    // 2. Polling de respaldo cada 6 segundos para garantizar actualización fluida
+    socket.on('notification:new', (notification: ApiNotification) => {
+      presentIncomingNotification(notification).catch(() => {});
+    });
+
     const interval = setInterval(() => {
       syncAppointments();
-    }, 6000);
+      if (authUser.rol === 'cliente') {
+        syncServerNotifications().catch(() => {});
+      }
+    }, 30_000);
 
     return () => {
       clearInterval(interval);
@@ -368,15 +425,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [authUser?.id, token]);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout>>();
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const showToast = (message: string) => {
-    setToastMessage(message);
+    if (!message || typeof message !== 'string' || !message.trim()) return;
+    setToastMessage(message.trim());
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToastMessage(null), 2000);
+    toastTimer.current = setTimeout(() => setToastMessage(null), 2500);
   };
 
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     if (!loaded.current) return;
@@ -389,7 +447,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         tamanoVehiculo,
         tema,
         authUser,
-        authToken: token,
+        authToken: null,
         mantenerSesion,
       });
     }, 300);
@@ -402,84 +460,107 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const loginWithEmail = async (emailStr: string, passStr: string, keepSession = true): Promise<AuthUser> => {
     const res = await loginApi(emailStr, passStr);
-    const mappedUser: AuthUser = {
-      id: res.user._id,
-      email: res.user.email,
-      nombre: res.user.name,
-      rol: res.user.role === 'client' ? 'cliente' : res.user.role,
-      telefono: res.user.phone,
-      pickupPerson: res.user.pickupPerson,
-      direccion: res.user.address,
-      notas: res.user.notes,
-    };
+
+    if (keepSession && res.token) {
+      await setPersistedToken(res.token);
+    } else {
+      await setPersistedToken(null);
+    }
+
     setApiToken(res.token);
     setToken(res.token);
+    const fullUser = await getMeApi().catch(() => res.user);
+    const mappedUser = mapApiUser(fullUser, {
+      id: res.user?._id || res.user?.id,
+      email: emailStr,
+      name: res.user?.name,
+      phone: res.user?.phone,
+    });
     setAuthUser(mappedUser);
     setMantenerSesion(keepSession);
 
-    if (!keepSession) {
-      savePersistedData({
-        cliente,
-        citas,
-        vehicleTypeLabel,
-        tamanoVehiculo,
-        tema,
-        authUser: mappedUser,
-        authToken: null,
-        mantenerSesion: false,
-      });
-    }
+    await savePersistedData({
+      cliente,
+      citas,
+      vehicleTypeLabel,
+      tamanoVehiculo,
+      tema,
+      authUser: mappedUser,
+      authToken: null,
+      mantenerSesion: keepSession,
+    });
 
-    await syncVehicles();
+    await syncVehicles(mappedUser);
     await syncAppointments();
     return mappedUser;
   };
 
   const registerWithEmail = async (nameStr: string, emailStr: string, passStr: string, phoneStr?: string): Promise<AuthUser> => {
     const res = await registerApi(nameStr, emailStr, passStr, phoneStr);
-    const mappedUser: AuthUser = {
-      id: res.user._id,
-      email: res.user.email,
-      nombre: res.user.name,
-      rol: 'cliente',
-      telefono: res.user.phone,
-    };
+
+    if (res.token) {
+      await setPersistedToken(res.token);
+    }
+
     setApiToken(res.token);
     setToken(res.token);
+    const fullUser = await getMeApi().catch(() => res.user);
+    const mappedUser = mapApiUser(fullUser, {
+      id: res.user?._id || res.user?.id,
+      email: emailStr,
+      name: nameStr,
+      phone: phoneStr,
+    });
     setAuthUser(mappedUser);
-    await syncVehicles();
+
+    await savePersistedData({
+      cliente,
+      citas,
+      vehicleTypeLabel,
+      tamanoVehiculo,
+      tema,
+      authUser: mappedUser,
+      authToken: null,
+      mantenerSesion: true,
+    });
+
+    await syncVehicles(mappedUser);
     await syncAppointments();
     return mappedUser;
   };
 
   const loginWithGoogle = async (credential: string): Promise<AuthUser> => {
     const res = await googleLoginApi(credential);
-    const mappedUser: AuthUser = {
-      id: res.user._id,
-      email: res.user.email,
-      nombre: res.user.name,
-      rol: res.user.role === 'client' ? 'cliente' : res.user.role,
-      telefono: res.user.phone,
-    };
+
+    if (res.token) {
+      await setPersistedToken(res.token);
+    }
+
     setApiToken(res.token);
     setToken(res.token);
+    const fullUser = await getMeApi().catch(() => res.user);
+    const mappedUser = mapApiUser(fullUser, {
+      id: res.user?._id || res.user?.id,
+      email: res.user?.email,
+      name: res.user?.name || 'Usuario',
+      phone: res.user?.phone,
+    });
     setAuthUser(mappedUser);
-    await syncVehicles();
+
+    await savePersistedData({
+      cliente,
+      citas,
+      vehicleTypeLabel,
+      tamanoVehiculo,
+      tema,
+      authUser: mappedUser,
+      authToken: null,
+      mantenerSesion: true,
+    });
+
+    await syncVehicles(mappedUser);
     await syncAppointments();
     return mappedUser;
-  };
-
-  const loginLavador = (codigo: string) => {
-    if (codigo.toLowerCase().startsWith('lavador')) {
-      setAuthUser({
-        id: `lav_${Date.now()}`,
-        email: 'lavador@monkey.com',
-        rol: 'lavador',
-        nombre: 'Lavador',
-      });
-      return true;
-    }
-    return false;
   };
 
   const logout = async () => {
@@ -488,11 +569,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await logoutApi();
       }
     } catch {}
+    await stopForegroundMonitoring().catch(() => {});
+    await setPersistedToken(null);
     setApiToken(null);
+    await resetNotificationTracking().catch(() => {});
     setToken(null);
     setAuthUser(null);
     setCliente(null);
-    savePersistedData({
+    await savePersistedData({
       cliente: null,
       citas: [],
       vehicleTypeLabel: null,
@@ -542,6 +626,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         nombre: prev?.nombre || 'Cliente',
         telefono: prev?.telefono || '',
         vehiculos: [...(prev?.vehiculos || []), v],
+        personaRecoge: prev?.personaRecoge || '',
+        direccion: prev?.direccion,
+        notas: prev?.notas,
       }));
     }
   };
@@ -562,6 +649,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         nombre: prev?.nombre || '',
         telefono: prev?.telefono || '',
         vehiculos: (prev?.vehiculos || []).filter((v) => v._id !== vehicleId),
+        personaRecoge: prev?.personaRecoge || '',
+        direccion: prev?.direccion,
+        notas: prev?.notas,
       }));
     }
   };
@@ -577,16 +667,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const cancelarCita = async (id: string) => {
-    if (getApiToken()) {
-      try {
-        await updateAppointmentStatusApi(id, 'cancelled');
-        await syncAppointments();
-        showToast('Cita cancelada');
-        return;
-      } catch {}
+    if (!getApiToken()) {
+      showToast('Tu sesión no es válida. Inicia sesión nuevamente.');
+      return;
     }
-    setCitas((prev) => prev.map((c) => (c.id === id ? { ...c, estado: 'cancelada' } : c)));
-    showToast('Cita cancelada');
+    try {
+      await updateAppointmentStatusApi(id, 'cancelled');
+      await syncAppointments();
+      showToast('Cita cancelada');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'No se pudo cancelar la cita.');
+    }
   };
 
   const eliminarCita = (id: string) => {
@@ -595,42 +686,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const tomarCita = async (id: string) => {
-    if (getApiToken()) {
-      try {
-        await updateAppointmentStatusApi(id, 'in_progress');
-        await syncAppointments();
-        showToast('Cita en proceso');
-        return;
-      } catch {}
+    if (!getApiToken()) {
+      showToast('Tu sesión no es válida. Inicia sesión nuevamente.');
+      return;
     }
-    setCitas((prev) => prev.map((c) => (c.id === id ? { ...c, estado: 'en_proceso' } : c)));
-    showToast('Cita tomada');
+    try {
+      await updateAppointmentStatusApi(id, 'in_progress');
+      await syncAppointments();
+      showToast('Cita en proceso');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'No se pudo tomar la cita.');
+    }
   };
 
   const terminarCita = async (id: string) => {
-    if (getApiToken()) {
-      try {
-        await updateAppointmentStatusApi(id, 'ready_for_pickup');
-        await syncAppointments();
-        showToast('Auto listo para entrega');
-        return;
-      } catch {}
+    if (!getApiToken()) {
+      showToast('Tu sesión no es válida. Inicia sesión nuevamente.');
+      return;
     }
-    setCitas((prev) => prev.map((c) => (c.id === id ? { ...c, estado: 'listo_entrega' } : c)));
-    showToast('Auto listo para entregarse');
+    try {
+      await updateAppointmentStatusApi(id, 'ready_for_pickup');
+      await syncAppointments();
+      showToast('Auto listo para entrega');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'No se pudo terminar la cita.');
+    }
   };
 
   const entregarCita = async (id: string) => {
-    if (getApiToken()) {
-      try {
-        await updateAppointmentStatusApi(id, 'completed');
-        await syncAppointments();
-        showToast('Cita completada y entregada');
-        return;
-      } catch {}
+    if (!getApiToken()) {
+      showToast('Tu sesión no es válida. Inicia sesión nuevamente.');
+      return;
     }
-    setCitas((prev) => prev.map((c) => (c.id === id ? { ...c, estado: 'completada' } : c)));
-    showToast('Auto entregado al cliente');
+    try {
+      await updateAppointmentStatusApi(id, 'completed');
+      await syncAppointments();
+      showToast('Cita completada y entregada');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'No se pudo entregar la cita.');
+    }
   };
 
   const activeCatalog = paquetesCatalog || PAQUETES_POR_TAMANO;
@@ -659,7 +753,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         loginWithEmail,
         registerWithEmail,
         loginWithGoogle,
-        loginLavador,
         logout,
         actualizarPerfil,
         actualizarPerfilLavador,
@@ -672,6 +765,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         tomarCita,
         terminarCita,
         entregarCita,
+        paymentsEnabled,
+        checkPaymentsEnabled,
       }}
     >
       {children}

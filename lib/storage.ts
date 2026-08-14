@@ -1,43 +1,30 @@
-import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = 'autolavado_data';
+const TOKEN_KEY = 'autolavado_auth_token';
 
-async function loadFromFileSystem(): Promise<string | null> {
-  const { File, Paths } = await import('expo-file-system');
-  const file = new File(Paths.document, 'autolavado_data.json');
-  if (!file.exists) return null;
-  return await file.text();
-}
-
-async function saveToFileSystem(data: string): Promise<void> {
-  const { File, Paths } = await import('expo-file-system');
-  const file = new File(Paths.document, 'autolavado_data.json');
-  file.create({ idempotent: true });
-  await file.write(data);
-}
-
-function loadFromWeb(): string | null {
+export async function getPersistedToken(): Promise<string | null> {
   try {
-    return localStorage.getItem(STORAGE_KEY);
+    const token = await AsyncStorage.getItem(TOKEN_KEY);
+    return token;
   } catch {
     return null;
   }
 }
 
-function saveToWeb(data: string): void {
+export async function setPersistedToken(token: string | null): Promise<void> {
   try {
-    localStorage.setItem(STORAGE_KEY, data);
+    if (token) {
+      await AsyncStorage.setItem(TOKEN_KEY, token);
+    } else {
+      await AsyncStorage.removeItem(TOKEN_KEY);
+    }
   } catch {}
 }
 
 export async function loadPersistedData<T>(): Promise<T | null> {
   try {
-    let raw: string | null = null;
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      raw = loadFromWeb();
-    } else {
-      raw = await loadFromFileSystem();
-    }
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as T;
   } catch {
@@ -48,10 +35,6 @@ export async function loadPersistedData<T>(): Promise<T | null> {
 export async function savePersistedData<T>(data: T): Promise<void> {
   try {
     const raw = JSON.stringify(data);
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      saveToWeb(raw);
-    } else {
-      await saveToFileSystem(raw);
-    }
+    await AsyncStorage.setItem(STORAGE_KEY, raw);
   } catch {}
 }

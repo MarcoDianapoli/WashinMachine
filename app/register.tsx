@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/store';
 import { Colors } from '@/constants/Colors';
-import { ApiError } from '@/lib/api';
+import { SpeedometerLoader } from '@/components/speedometer-loader';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -38,11 +38,8 @@ export default function RegisterScreen() {
       showToast('Cuenta creada exitosamente');
       router.replace('/(tabs)');
     } catch (err: any) {
-      if (err instanceof ApiError) {
-        showToast(err.message || 'Error al registrar usuario');
-      } else {
-        showToast('Error de conexión con el servidor');
-      }
+      const errorText = err?.message || (typeof err === 'string' ? err : 'Error al registrar cuenta');
+      showToast(errorText);
     } finally {
       setLoading(false);
     }
@@ -55,6 +52,7 @@ export default function RegisterScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
+          <Text style={styles.eyebrow}>NUEVO CLIENTE</Text>
           <Text style={styles.title}>Crear una cuenta nueva</Text>
           <View style={styles.loginLinkContainer}>
             <Text style={styles.loginText}>¿Ya tienes una cuenta? </Text>
@@ -125,7 +123,7 @@ export default function RegisterScreen() {
           disabled={!nombre.trim() || !email.trim() || !password.trim() || !confirmPassword.trim() || loading}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <SpeedometerLoader compact size={28} accentColor="#ffffff" trackColor="rgba(255,255,255,0.28)" />
           ) : (
             <Text style={styles.buttonText}>Registrarte</Text>
           )}
@@ -137,6 +135,7 @@ export default function RegisterScreen() {
 
 const getStyles = (tema: 'claro' | 'oscuro') => {
   const theme = Colors[tema];
+  const isDark = tema === 'oscuro';
   return StyleSheet.create({
     container: { 
       flex: 1, 
@@ -144,23 +143,25 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     },
     scrollContent: {
       flexGrow: 1,
-      paddingHorizontal: 30, 
+      paddingHorizontal: 24,
       justifyContent: 'center',
       alignItems: 'center',
       paddingVertical: 40,
     },
     header: {
       alignItems: 'center',
-      marginBottom: 30,
+      marginBottom: 28,
     },
+    eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 2.6, color: theme.primary, marginBottom: 5 },
     title: {
-      fontSize: 26,
-      fontWeight: 'bold',
+      fontSize: 36,
+      lineHeight: 40,
+      fontWeight: '900',
+      letterSpacing: -1.1,
       textAlign: 'center',
       color: theme.text,
       marginBottom: 10,
-      width: '80%',
-      lineHeight: 32,
+      width: '95%',
     },
     loginLinkContainer: {
       flexDirection: 'row',
@@ -185,18 +186,18 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       backgroundColor: theme.card,
       width: '100%',
       paddingVertical: 14,
-      borderRadius: 6,
+      borderRadius: 16,
       fontSize: 14,
       marginBottom: 16,
       color: theme.text,
       borderWidth: 1,
-      borderColor: theme.border,
+      borderColor: isDark ? theme.borderStrong : theme.border,
     },
     button: { 
       backgroundColor: theme.primary, 
       width: '100%',
       paddingVertical: 16, 
-      borderRadius: 6, 
+      borderRadius: 999,
       alignItems: 'center',
       marginTop: 10,
       marginBottom: 20,

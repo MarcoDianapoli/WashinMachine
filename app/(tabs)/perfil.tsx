@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Switch } from 'react-native';
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '@/store';
 import { Colors } from '@/constants/Colors';
@@ -28,12 +28,16 @@ export default function PerfilMenuScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        
+        <View style={styles.pageHeader}>
+          <Text style={styles.eyebrow}>CUENTA</Text>
+          <Text style={styles.pageTitle}>Mi perfil</Text>
+        </View>
+
         {/* Cabecera del Perfil */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <Image 
-              source={{ uri: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=dc2626&color=fff&size=128' }} 
+              source={{ uri: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=ef3b42&color=fff&size=128' }}
               style={styles.avatar}
             />
           </View>
@@ -70,8 +74,8 @@ export default function PerfilMenuScreen() {
           <MenuItem 
             icon="calendar-outline" 
             title="Mis Citas" 
-            subtitle="Revisar lavados agendados y activos"
-            onPress={() => router.push('/(tabs)')}
+            subtitle="Próximas, completadas y canceladas"
+            onPress={() => router.push('/mis-citas' as Href)}
             tema={tema}
           />
 
@@ -108,7 +112,7 @@ export default function PerfilMenuScreen() {
 
 function MenuItem({ icon, title, subtitle, onPress, isDestructive = false, tema, rightElement }: any) {
   const styles = useMemo(() => getStyles(tema), [tema]);
-  const themeColors = Colors[tema];
+  const themeColors = Colors[tema as keyof typeof Colors];
   const color = isDestructive ? themeColors.danger : themeColors.textMuted;
   const titleColor = isDestructive ? themeColors.danger : themeColors.text;
   
@@ -132,22 +136,45 @@ function MenuItem({ icon, title, subtitle, onPress, isDestructive = false, tema,
 
 const getStyles = (tema: 'claro' | 'oscuro') => {
   const theme = Colors[tema];
+  const isDark = tema === 'oscuro';
   return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: theme.background,
     },
     scrollContent: {
-      paddingVertical: 20,
+      paddingHorizontal: 18,
+      paddingTop: 28,
+      paddingBottom: 40,
+    },
+    pageHeader: {
+      marginBottom: 20,
+      paddingBottom: 16,
+      borderBottomWidth: 2,
+      borderBottomColor: theme.borderStrong,
+    },
+    eyebrow: {
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 2.8,
+      color: theme.textMuted,
+    },
+    pageTitle: {
+      color: theme.text,
+      fontSize: 42,
+      lineHeight: 46,
+      fontWeight: '900',
+      letterSpacing: -1.4,
     },
     profileHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingBottom: 30,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-      marginBottom: 10,
+      padding: 18,
+      borderWidth: isDark ? 1.5 : 1,
+      borderColor: theme.borderStrong,
+      borderRadius: 20,
+      backgroundColor: theme.card,
+      marginBottom: 18,
     },
     avatarContainer: {
       marginRight: 16,
@@ -163,8 +190,8 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       justifyContent: 'center',
     },
     profileName: {
-      fontSize: 20,
-      fontWeight: 'bold',
+      fontSize: 22,
+      fontWeight: '900',
       color: theme.text,
       marginBottom: 4,
     },
@@ -173,30 +200,40 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       color: theme.textMuted,
     },
     qrContainer: {
-      padding: 8,
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.primarySoft,
     },
     menuSection: {
-      paddingTop: 10,
+      gap: 12,
     },
     menuItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 16,
+      padding: 16,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: isDark ? theme.borderStrong : theme.border,
+      backgroundColor: theme.card,
     },
     menuIcon: {
-      width: 32,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       alignItems: 'center',
+      justifyContent: 'center',
       marginRight: 16,
+      backgroundColor: theme.primarySoft,
     },
     menuTextContainer: {
       flex: 1,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-      paddingBottom: 16,
     },
     menuTitle: {
       fontSize: 16,
+      fontWeight: '800',
       marginBottom: 2,
     },
     menuSubtitle: {

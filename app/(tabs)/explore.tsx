@@ -60,7 +60,9 @@ export default function PaquetesScreen() {
   return (
     <View style={styles.container}>
       <Animated.View entering={FadeInDown.springify()}>
-        <Text style={styles.title}>Selecciona un paquete</Text>
+        <Text style={styles.eyebrow}>SERVICIOS</Text>
+        <Text style={styles.title}>Elige tu paquete</Text>
+        <Text style={styles.subtitle}>Un formato claro para cada tipo de vehículo.</Text>
       </Animated.View>
 
       <Animated.View entering={FadeInDown.delay(100).springify()}>
@@ -153,43 +155,46 @@ export default function PaquetesScreen() {
 const getStyles = (tema: 'claro' | 'oscuro') => {
   const theme = Colors[tema];
   const isDark = tema === 'oscuro';
+  const strongBorder = theme.borderStrong;
   
   return StyleSheet.create({
-    container: { flex: 1, padding: 20, backgroundColor: theme.background },
-    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 10, marginTop: 10, color: theme.text },
-    list: { gap: 12, paddingBottom: 100 },
+    container: { flex: 1, paddingHorizontal: 18, paddingTop: 28, backgroundColor: theme.background },
+    eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 2.8, color: theme.textMuted },
+    title: { fontSize: 42, lineHeight: 46, fontWeight: '900', letterSpacing: -1.4, marginTop: 2, color: theme.text },
+    subtitle: { fontSize: 14, lineHeight: 20, color: theme.textMuted, marginTop: 7, marginBottom: 18 },
+    list: { gap: 14, paddingBottom: 110 },
     card: {
-      backgroundColor: theme.card, padding: 20, borderRadius: 10,
+      backgroundColor: theme.card, padding: 18, borderRadius: 20,
       flexDirection: 'row', alignItems: 'center', gap: 14,
-      borderWidth: 1, borderColor: theme.border
+      borderWidth: isDark ? 1.5 : 1, borderColor: strongBorder,
     },
-    cardBadge: { backgroundColor: theme.primary, width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-    badgeText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
-    cardTitle: { fontSize: 18, fontWeight: 'bold', color: theme.text },
-    cardSub: { fontSize: 14, color: theme.textMuted },
-    cardArrow: { fontSize: 24, color: theme.textMuted, fontWeight: '300' },
-    hintBox: { backgroundColor: isDark ? '#3f1515' : '#fee2e2', padding: 14, borderRadius: 10, marginBottom: 16 },
-    hintLabel: { fontSize: 14, fontWeight: '600', color: isDark ? '#fca5a5' : '#991b1b' },
+    cardBadge: { backgroundColor: theme.primary, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+    badgeText: { color: theme.onPrimary, fontWeight: '900', fontSize: 14 },
+    cardTitle: { fontSize: 19, lineHeight: 23, fontWeight: '900', color: theme.text },
+    cardSub: { fontSize: 13, color: theme.textMuted, marginTop: 4 },
+    cardArrow: { fontSize: 28, color: theme.primary, fontWeight: '500' },
+    hintBox: { backgroundColor: theme.primarySoft, padding: 15, borderRadius: 16, marginBottom: 16 },
+    hintLabel: { fontSize: 14, fontWeight: '800', color: isDark ? '#ffb4b8' : '#991b1b' },
     hintType: { fontSize: 12, color: theme.primary, marginTop: 4 },
     hintSmall: { fontSize: 11, color: theme.textMuted, marginTop: 4 },
-    footer: { position: 'absolute', bottom: 20, left: 20, right: 20 },
-    volverButton: { backgroundColor: theme.card, paddingVertical: 14, borderRadius: 14, alignItems: 'center', borderWidth: 1, borderColor: theme.border },
-    volverText: { fontSize: 16, fontWeight: '600', color: theme.text },
+    footer: { position: 'absolute', bottom: 18, left: 18, right: 18 },
+    volverButton: { backgroundColor: isDark ? theme.primary : '#111111', paddingVertical: 14, borderRadius: 999, alignItems: 'center', borderWidth: 1, borderColor: strongBorder },
+    volverText: { fontSize: 14, fontWeight: '800', color: '#ffffff' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: theme.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%', padding: 24, paddingBottom: 40 },
+    modalContent: { backgroundColor: theme.card, borderTopLeftRadius: 26, borderTopRightRadius: 26, maxHeight: '84%', padding: 24, paddingBottom: 40 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-    modalBadge: { backgroundColor: isDark ? '#3f1515' : '#fee2e2', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+    modalBadge: { backgroundColor: theme.primarySoft, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
     modalBadgeText: { fontSize: 12, fontWeight: '700', color: isDark ? '#fca5a5' : '#991b1b' },
     modalClose: { fontSize: 16, color: theme.danger, fontWeight: '600' },
-    modalTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 24, color: theme.text },
+    modalTitle: { fontSize: 30, lineHeight: 34, fontWeight: '900', letterSpacing: -0.7, marginBottom: 24, color: theme.text },
     detailRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.border },
     detailLabel: { fontSize: 14, color: theme.textMuted, fontWeight: '500' },
     detailValue: { fontSize: 16, color: theme.text, fontWeight: '600' },
     detailPrice: { fontSize: 22, color: theme.primary, fontWeight: 'bold' },
     detailDesc: { marginTop: 20, marginBottom: 24 },
     descText: { fontSize: 14, color: theme.textMuted, lineHeight: 22, marginTop: 6 },
-    selectButton: { backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 10, alignItems: 'center', marginBottom: 12 },
-    selectButtonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+    selectButton: { backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 999, alignItems: 'center', marginBottom: 12 },
+    selectButtonText: { color: 'white', fontSize: 16, fontWeight: '900' },
     cancelButton: { paddingVertical: 12, alignItems: 'center' },
     cancelButtonText: { fontSize: 16, color: theme.textMuted, fontWeight: '500' },
   });

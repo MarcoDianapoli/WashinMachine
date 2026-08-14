@@ -14,7 +14,13 @@ export default function LavadorTabsLayout() {
         tabBarStyle: {
           backgroundColor: theme.card,
           borderTopColor: theme.border,
+          borderTopWidth: 1,
+          height: 70,
+          paddingTop: 7,
+          paddingBottom: 8,
         },
+        tabBarInactiveTintColor: theme.textMuted,
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
         headerStyle: {
           backgroundColor: theme.card,
         },

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "autolavado",
+    "name": "Washing Machine",
     "slug": "autolavado",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -17,8 +17,15 @@
       "supportsTablet": true
     },
     "android": {
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_DATA_SYNC"
+      ],
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff",
+        "backgroundColor": "#0d0d0f",
         "foregroundImage": "./assets/images/logo.png"
       },
       "edgeToEdgeEnabled": true,
@@ -44,8 +51,8 @@
         "display": "standalone",
         "orientation": "portrait",
         "lang": "es-MX",
-        "background_color": "#ffffff",
-        "theme_color": "#ffffff",
+        "background_color": "#0d0d0f",
+        "theme_color": "#0d0d0f",
         "prefer_related_applications": false,
         "icons": [
           {
@@ -63,15 +70,25 @@
     },
     "plugins": [
       "expo-router",
+      "./plugins/withForegroundService",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#ef3b42",
+          "defaultChannel": "default"
+        }
+      ],
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logo.png",
-          "imageWidth": 250,
+          "image": "./assets/images/splash-speedometer.png",
+          "imageWidth": 190,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#0d0d0f",
           "dark": {
-            "backgroundColor": "#000000"
+            "image": "./assets/images/splash-speedometer.png",
+            "backgroundColor": "#0d0d0f"
           }
         }
       ]

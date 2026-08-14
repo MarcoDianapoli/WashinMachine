@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useApp } from '@/store';
 import { Colors } from '@/constants/Colors';
 import { getAvailabilityApi, ApiAvailabilitySlot } from '@/lib/api';
+import { SpeedometerLoader } from '@/components/speedometer-loader';
 
 function buildDays(count: number) {
   const days: { label: string; value: string }[] = [];
@@ -23,7 +24,7 @@ function buildDays(count: number) {
 export default function HorariosScreen() {
   const { paqueteId } = useLocalSearchParams<{ paqueteId: string }>();
   const router = useRouter();
-  const { paquetes, tema, authUser } = useApp();
+  const { paquetes, tema } = useApp();
   const styles = useMemo(() => getStyles(tema), [tema]);
   const theme = Colors[tema];
 
@@ -84,6 +85,9 @@ export default function HorariosScreen() {
 
   return (
     <View style={styles.container}>
+      <Text style={styles.eyebrow}>RESERVA · PASO 1 DE 2</Text>
+      <Text style={styles.pageTitle}>Elige fecha y hora</Text>
+
       <View style={styles.paqueteInfo}>
         <Text style={styles.paqueteNombre}>{paquete?.nombre ?? 'Paquete'}</Text>
         <Text style={styles.paqueteDetalle}>{paquete?.duracion} • {paquete?.precio}</Text>
@@ -115,8 +119,7 @@ export default function HorariosScreen() {
 
       {loadingSlots ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={{ color: theme.textMuted, marginTop: 8 }}>Consultando disponibilidad...</Text>
+          <SpeedometerLoader size={124} message="Consultando disponibilidad" />
         </View>
       ) : slots.length === 0 ? (
         <Text style={{ color: theme.textMuted, marginBottom: 20 }}>
@@ -166,22 +169,23 @@ export default function HorariosScreen() {
 
 const getStyles = (tema: 'claro' | 'oscuro') => {
   const theme = Colors[tema];
-  const isDark = tema === 'oscuro';
   
   return StyleSheet.create({
-    container: { flex: 1, padding: 20, backgroundColor: theme.background },
-    paqueteInfo: { backgroundColor: theme.card, padding: 16, borderRadius: 10, marginBottom: 20, borderWidth: 1, borderColor: theme.border },
-    paqueteNombre: { fontSize: 20, fontWeight: 'bold', color: theme.text },
+    container: { flex: 1, paddingHorizontal: 18, paddingTop: 18, backgroundColor: theme.background },
+    eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 2.3, color: theme.textMuted },
+    pageTitle: { fontSize: 34, lineHeight: 39, fontWeight: '900', letterSpacing: -1, color: theme.text, marginTop: 3, marginBottom: 18 },
+    paqueteInfo: { backgroundColor: theme.card, padding: 18, borderRadius: 20, marginBottom: 22, borderWidth: 1, borderColor: theme.borderStrong },
+    paqueteNombre: { fontSize: 21, fontWeight: '900', color: theme.text },
     paqueteDetalle: { fontSize: 14, color: theme.textMuted, marginTop: 4 },
-    sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 12, color: theme.text },
+    sectionTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 1.1, marginBottom: 12, color: theme.textMuted, textTransform: 'uppercase' },
     diasContainer: { gap: 10, marginBottom: 24, paddingVertical: 4 },
     diaCard: {
       backgroundColor: theme.card,
       paddingHorizontal: 20,
       paddingVertical: 12,
-      borderRadius: 10,
+      borderRadius: 16,
       borderWidth: 1,
-      borderColor: theme.border,
+      borderColor: theme.borderStrong,
     },
     diaCardActivo: { backgroundColor: theme.primary, borderColor: theme.primary },
     diaText: { fontSize: 14, fontWeight: '600', color: theme.text },
@@ -192,20 +196,20 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
       backgroundColor: theme.card,
       margin: 5,
       paddingVertical: 16,
-      borderRadius: 10,
+      borderRadius: 16,
       alignItems: 'center',
       borderWidth: 1,
-      borderColor: theme.border,
+      borderColor: theme.borderStrong,
     },
-    horarioNoDisponible: { backgroundColor: isDark ? '#1a1a1a' : '#f0f0f0', borderColor: isDark ? '#222' : '#e0e0e0' },
+    horarioNoDisponible: { backgroundColor: theme.surfaceMuted, borderColor: theme.border, opacity: 0.55 },
     horarioSeleccionado: { backgroundColor: theme.primary, borderColor: theme.primary },
     horarioText: { fontSize: 16, fontWeight: '600', color: theme.text },
     horarioTextNoDisponible: { color: theme.textMuted },
     horarioTextSeleccionado: { color: 'white' },
     llenoText: { fontSize: 10, color: theme.textMuted, marginTop: 2 },
     loadingContainer: { padding: 30, alignItems: 'center', justifyContent: 'center' },
-    button: { backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 10, alignItems: 'center', marginTop: 'auto' },
+    button: { backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 999, alignItems: 'center', marginTop: 'auto', marginBottom: 12 },
     buttonDisabled: { opacity: 0.5 },
-    buttonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+    buttonText: { color: 'white', fontSize: 16, fontWeight: '900' },
   });
 };

@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, TextInput, Switch, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, TextInput, Switch } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useApp } from '@/store';
-import type { Cita, Vehiculo } from '@/types';
+import type { Vehiculo } from '@/types';
 import { Colors } from '@/constants/Colors';
+import { SpeedometerLoader } from '@/components/speedometer-loader';
 
 const TAMANO_TO_API_TYPE: Record<string, string> = {
   chico: 'small',
@@ -21,7 +22,7 @@ export default function ConfirmarCitaScreen() {
     hora: string;
   }>();
   const router = useRouter();
-  const { paquetes, cliente, authUser, crearCitaApiCall, syncAppointments, showToast, tema } = useApp();
+  const { paquetes, cliente, authUser, crearCitaApiCall, syncAppointments, showToast, tema, paymentsEnabled } = useApp();
   const styles = useMemo(() => getStyles(tema), [tema]);
   const theme = Colors[tema];
 
@@ -75,7 +76,7 @@ export default function ConfirmarCitaScreen() {
 
     setLoading(true);
     try {
-      await crearCitaApiCall({
+      const res = await crearCitaApiCall({
         packageId: paquete.id,
         date: fecha,
         time: hora,
@@ -97,7 +98,21 @@ export default function ConfirmarCitaScreen() {
 
       await syncAppointments();
       showToast('Cita creada exitosamente en la base de datos');
-      router.replace('/exito');
+      
+      if (paymentsEnabled && res?.price && res.price > 0) {
+        router.replace({
+          pathname: '/pago',
+          params: {
+            appointmentId: res._id,
+            precio: String(res.price),
+            paqueteNombre: res.packageName || paquete?.nombre || '',
+            fecha: fecha,
+            hora: hora,
+          },
+        });
+      } else {
+        router.replace('/exito');
+      }
     } catch (err: any) {
       const errorMsg = err?.message || 'No se pudo agendar en la base de datos';
       showToast(errorMsg);
@@ -118,6 +133,7 @@ export default function ConfirmarCitaScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Animated.View entering={FadeInDown.springify()}>
+        <Text style={styles.eyebrow}>RESERVA · PASO 2 DE 2</Text>
         <Text style={styles.title}>Confirmar cita</Text>
       </Animated.View>
 
@@ -219,7 +235,11 @@ export default function ConfirmarCitaScreen() {
           onPress={confirmarCita}
           disabled={!nombreMostrar || loading}
         >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Confirmar cita</Text>}
+          {loading ? (
+            <SpeedometerLoader compact size={28} accentColor="#ffffff" trackColor="rgba(255,255,255,0.28)" />
+          ) : (
+            <Text style={styles.buttonText}>Confirmar cita</Text>
+          )}
         </TouchableOpacity>
       </Animated.View>
     </ScrollView>
@@ -232,12 +252,13 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
   
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background },
-    content: { padding: 20, paddingBottom: 40 },
-    title: { fontSize: 26, fontWeight: 'bold', marginBottom: 20, marginTop: 10, color: theme.text },
-    card: { backgroundColor: theme.card, padding: 18, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: theme.border },
-    cardLabel: { fontSize: 11, color: theme.textMuted, letterSpacing: 1.5, marginBottom: 8, marginTop: 4 },
-    cardTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 4, color: theme.text },
-    cardPrice: { fontSize: 28, fontWeight: 'bold', color: theme.primary, marginBottom: 4 },
+    content: { paddingHorizontal: 18, paddingTop: 18, paddingBottom: 40 },
+    eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 2.3, color: theme.textMuted },
+    title: { fontSize: 38, lineHeight: 43, fontWeight: '900', letterSpacing: -1.2, marginBottom: 20, marginTop: 3, color: theme.text },
+    card: { backgroundColor: theme.card, padding: 19, borderRadius: 20, marginBottom: 14, borderWidth: isDark ? 1.5 : 1, borderColor: theme.borderStrong },
+    cardLabel: { fontSize: 10, fontWeight: '800', color: theme.textMuted, letterSpacing: 1.8, marginBottom: 8, marginTop: 4 },
+    cardTitle: { fontSize: 22, fontWeight: '900', marginBottom: 4, color: theme.text },
+    cardPrice: { fontSize: 30, fontWeight: '900', color: theme.primary, marginBottom: 4 },
     cardValue: { fontSize: 18, fontWeight: '600', marginBottom: 2, color: theme.text },
     cardSub: { fontSize: 14, color: theme.textMuted, marginTop: 4 },
     divider: { height: 1, backgroundColor: theme.border, marginVertical: 12 },
@@ -246,15 +267,15 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     warningCard: { backgroundColor: isDark ? '#3f1515' : '#fef3c7', borderWidth: 1, borderColor: isDark ? theme.danger : '#f59e0b' },
     warningText: { fontSize: 14, color: isDark ? '#fca5a5' : '#92400e', fontWeight: '500' },
     actions: { flexDirection: 'row', gap: 12, marginTop: 10 },
-    button: { flex: 1, backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
+    button: { flex: 1, backgroundColor: theme.primary, paddingVertical: 16, borderRadius: 999, alignItems: 'center' },
     buttonDisabled: { opacity: 0.5 },
     buttonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
-    buttonSecondary: { flex: 1, backgroundColor: theme.card, paddingVertical: 16, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: theme.border },
+    buttonSecondary: { flex: 1, backgroundColor: theme.card, paddingVertical: 16, borderRadius: 999, alignItems: 'center', borderWidth: 1, borderColor: theme.borderStrong },
     buttonSecondaryText: { color: theme.text, fontSize: 16, fontWeight: 'bold' },
     switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 8 },
-    otroVehiculoContainer: { marginTop: 10, padding: 12, backgroundColor: isDark ? '#2a2a2c' : '#f9fafb', borderRadius: 8, borderWidth: 1, borderColor: theme.border },
-    input: { backgroundColor: theme.background, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 8, fontSize: 16, marginTop: 8, borderWidth: 1, borderColor: theme.border, color: theme.text },
-    vehiculoCard: { padding: 12, borderWidth: 1, borderColor: theme.border, borderRadius: 8, marginRight: 10, backgroundColor: theme.background, minWidth: 140 },
+    otroVehiculoContainer: { marginTop: 10, padding: 14, backgroundColor: theme.surfaceMuted, borderRadius: 16, borderWidth: 1, borderColor: theme.border },
+    input: { backgroundColor: theme.background, paddingHorizontal: 16, paddingVertical: 13, borderRadius: 14, fontSize: 16, marginTop: 8, borderWidth: 1, borderColor: theme.borderStrong, color: theme.text },
+    vehiculoCard: { padding: 14, borderWidth: 1, borderColor: theme.borderStrong, borderRadius: 16, marginRight: 10, backgroundColor: theme.background, minWidth: 140 },
     vehiculoCardSelected: { backgroundColor: theme.primary, borderColor: theme.primary },
     vehiculoTitle: { fontSize: 16, fontWeight: 'bold', color: theme.text },
     vehiculoSub: { fontSize: 12, color: theme.textMuted, marginTop: 4 },

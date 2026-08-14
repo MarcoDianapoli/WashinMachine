@@ -1,37 +1,37 @@
 import { Platform } from 'react-native';
 
-const tintColorLight = '#dc2626';
-const tintColorDark = '#dc2626';
+const tintColorLight = '#ef3b42';
+const tintColorDark = '#ef3b42';
 
 export const Colors = {
   light: {
-    text: '#111',
-    background: '#fff',
+    text: '#0d0d0f',
+    background: '#f4f3f1',
     tint: tintColorLight,
-    icon: '#666',
-    tabIconDefault: '#999',
+    icon: '#68686f',
+    tabIconDefault: '#77777f',
     tabIconSelected: tintColorLight,
   },
   dark: {
-    text: '#fff',
-    background: '#111',
-    tint: tintColorLight,
-    icon: '#999',
-    tabIconDefault: '#666',
+    text: '#f4f3f1',
+    background: '#0d0d0f',
+    tint: tintColorDark,
+    icon: '#a3a3aa',
+    tabIconDefault: '#77777f',
     tabIconSelected: tintColorLight,
   },
 };
 
 export const Brand = {
-  red: '#dc2626',
+  red: '#ef3b42',
   darkRed: '#991b1b',
   lightRed: '#fee2e2',
-  black: '#111',
+  black: '#0d0d0f',
   white: '#fff',
   gray: '#666',
-  lightGray: '#f5f5f5',
-  border: '#ddd',
-  textMuted: '#999',
+  lightGray: '#f4f3f1',
+  border: '#d4d1cb',
+  textMuted: '#68686f',
   success: '#10b981',
   warning: '#f59e0b',
   error: '#ef4444',
