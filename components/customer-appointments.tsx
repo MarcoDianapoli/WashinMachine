@@ -129,7 +129,9 @@ function AppointmentCard({
           <View style={styles.cardSummary}>
             <View style={styles.cardSummaryText}>
               <Text style={styles.cardTitle}>{item.paqueteNombre}</Text>
-              <Text style={styles.cardVehicle} numberOfLines={1}>{vehicleName}</Text>
+              <Text style={styles.cardVehicle} numberOfLines={1}>
+                {[vehicleName, item.vehiculo?.tipoVehiculo ? `(${item.vehiculo.tipoVehiculo})` : null].filter(Boolean).join(' ')}
+              </Text>
             </View>
             <View style={{ alignItems: 'flex-end', gap: 6 }}>
               <View style={[styles.status, { borderColor: statusColor }]}>
@@ -180,7 +182,7 @@ function AppointmentCard({
 
 export function CustomerAppointmentsScreen({ mode }: CustomerAppointmentsScreenProps) {
   const router = useRouter();
-  const { citas, cancelarCita, syncAppointments, authUser, cliente, tema, paymentsEnabled } = useApp();
+  const { citas, cancelarCita, syncAppointments, authUser, cliente, tema, paymentsEnabled, paquetes } = useApp();
   const styles = useMemo(() => getStyles(tema), [tema]);
   const [selected, setSelected] = useState<Cita | null>(null);
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
@@ -359,6 +361,29 @@ export function CustomerAppointmentsScreen({ mode }: CustomerAppointmentsScreenP
                     </Text>
                   </View>
 
+                  {paymentsEnabled && selected && !selected.paid && selected.estado !== 'completada' && selected.estado !== 'cancelada' && (
+                    <TouchableOpacity
+                      style={styles.payOnlineButton}
+                      onPress={() => {
+                        const pkg = paquetes.find(p => p.id === selected.paqueteId);
+                        const displayPrice = selected.precio !== undefined ? selected.precio : (pkg?.precio || 0);
+                        setSelected(null);
+                        router.push({
+                          pathname: '/pago',
+                          params: {
+                            appointmentId: selected.id,
+                            precio: String(displayPrice),
+                            paqueteNombre: selected.paqueteNombre,
+                            fecha: selected.fecha,
+                            hora: selected.hora,
+                          },
+                        });
+                      }}
+                    >
+                      <Text style={styles.payOnlineButtonText}>Pagar en línea</Text>
+                    </TouchableOpacity>
+                  )}
+
                   {showQr && selected.code && (
                     <View style={styles.ticket}>
                       <View style={styles.ticketStrip} />
@@ -375,9 +400,11 @@ export function CustomerAppointmentsScreen({ mode }: CustomerAppointmentsScreenP
 
                   <DetailRow label="Fecha" value={selected.fecha} styles={styles} />
                   <DetailRow label="Hora" value={selected.hora} styles={styles} />
-                  {selected.precio !== undefined && (
-                    <DetailRow label="Precio" value={`$${selected.precio}`} styles={styles} />
-                  )}
+                  <DetailRow 
+                    label="Precio" 
+                    value={selected.precio !== undefined ? `$${selected.precio}` : (paquetes.find(p => p.id === selected.paqueteId)?.precio || '$0')} 
+                    styles={styles} 
+                  />
                   <DetailRow
                     label="Cliente"
                     value={selected.cliente.nombre || authUser?.nombre || cliente?.nombre || 'Cliente'}
@@ -391,9 +418,12 @@ export function CustomerAppointmentsScreen({ mode }: CustomerAppointmentsScreenP
                   <DetailRow
                     label="Vehículo"
                     value={
-                      [selectedVehicle?.marca, selectedVehicle?.modelo, selectedVehicle?.placa]
-                        .filter(Boolean)
-                        .join(' · ') || 'Vehículo'
+                      [
+                        [selectedVehicle?.marca, selectedVehicle?.modelo, selectedVehicle?.placa]
+                          .filter(Boolean)
+                          .join(' · ') || 'Vehículo',
+                        selectedVehicle?.tipoVehiculo ? `(${selectedVehicle.tipoVehiculo})` : null
+                      ].filter(Boolean).join(' ')
                     }
                     styles={styles}
                   />
@@ -413,27 +443,6 @@ export function CustomerAppointmentsScreen({ mode }: CustomerAppointmentsScreenP
                       disabled={busy}
                     >
                       <Text style={styles.cancelButtonText}>{busy ? 'Cancelando…' : 'Cancelar cita'}</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {paymentsEnabled && selected && !selected.paid && selected.estado !== 'completada' && selected.estado !== 'cancelada' && (
-                    <TouchableOpacity
-                      style={styles.payOnlineButton}
-                      onPress={() => {
-                        setSelected(null);
-                        router.push({
-                          pathname: '/pago',
-                          params: {
-                            appointmentId: selected.id,
-                            precio: String(selected.precio || 0),
-                            paqueteNombre: selected.paqueteNombre,
-                            fecha: selected.fecha,
-                            hora: selected.hora,
-                          },
-                        });
-                      }}
-                    >
-                      <Text style={styles.payOnlineButtonText}>💳 Pagar en línea</Text>
                     </TouchableOpacity>
                   )}
                 </>

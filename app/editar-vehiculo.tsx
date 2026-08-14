@@ -35,7 +35,7 @@ const WIKI_API = 'https://commons.wikimedia.org/w/api.php';
 const searchCache = new Map<string, WikiResult>();
 
 const LARGE_SUV_MODELS = /\b(suburban|tahoe|yukon|expedition|navigator|escalade|armada|sequoia|land.cruiser|prado|fj.cruiser|montero|pajero|wrangler.unlimited|gls|x7|q7|q8|cayenne|bentayga|cullinan|ghost|phantom|urus|levante|grecale)\b/i;
-const SUV_MODELS = /\b(cr-v|rav4|escape|tucson|sportage|forester|cx-5|cx-9|cx-30|cx-50|cx-90|highlander|pilot|pathfinder|murano|rogue|x-trail|qashqai|equinox|traverse|blazer|explorer|edge|territory|endeavour|kuga|ecosport|santa.?fe|kona|venue|telluride|sorento|sportage|niro|seltos|ev6|id\.4|id\.5|enyaq|model.y|model.x|x5|x3|x1|x6|q5|q3|gle|glc|glb|gla|touareg|tiguan|taos|atlas|compass|cherokee|grand.cherokee|wrangler|renegade|fiat.500x|duster|sandero.stepway|captur|kadjar|arkana|austral|t-cross|t-roc|taigo|tracker|trailblazer|trax|encore|envision|xterra|4runner|outlander|eclipse.cross|xceed|ceed|stonic|wrx|crosstrek|forester|outback|ascent|levorg|xv|hr-v|zr-v|vezel|passport|mux|mu-x|sw4|etron|q4|q6|gt|eqb|eqc|eqe|eqs|ix|ix3|ix5|i4|i5|i7|xc40|xc60|xc90|x60|x90|q2|bmwx)\d*\b/i;
+const SUV_MODELS = /\b(cr-v|rav4|escape|tucson|sportage|forester|cx-3|cx-4|cx-5|cx-7|cx-8|cx-9|cx-30|cx-50|cx-90|highlander|pilot|pathfinder|murano|rogue|x-trail|qashqai|equinox|traverse|blazer|explorer|edge|territory|endeavour|kuga|ecosport|santa.?fe|kona|venue|telluride|sorento|sportage|niro|seltos|ev6|id\.4|id\.5|enyaq|model.y|model.x|x5|x3|x1|x6|q5|q3|gle|glc|glb|gla|touareg|tiguan|taos|atlas|compass|cherokee|grand.cherokee|wrangler|renegade|fiat.500x|duster|sandero.stepway|captur|kadjar|arkana|austral|t-cross|t-roc|taigo|tracker|trailblazer|trax|encore|envision|xterra|4runner|outlander|eclipse.cross|xceed|ceed|stonic|wrx|crosstrek|forester|outback|ascent|levorg|xv|hr-v|zr-v|vezel|passport|mux|mu-x|sw4|etron|q4|q6|gt|eqb|eqc|eqe|eqs|ix|ix3|ix5|i4|i5|i7|xc40|xc60|xc90|x60|x90|q2|bmwx)\d*\b/i;
 const SEDAN_MODELS = /\b(civic|corolla|sentra|altima|accord|camry|malibu|fusion|focus|fiesta|elantra|sonata|azera|avante|optima|k5|rio|forte|mazda3|mazda6|323|626|subaru.impreza|legacy|galant|lancer|mirage|versa|sunny|tiida|almera|leaf|prius|corona|carina|premio|allion|belta|vios|yaris.sedan|city|grace|brio.sedan|vento|jetta|passat|jetta|golf.sedan|fabia|rapid|octavia|superb|laguna|megane.sedan|fluence|duster.sedan|logan|symbol|clio.sedan|talisman|c-class|e-class|s-class|cla|clk|3-series|5-series|7-series|2-series|4-series|a3.sedan|a4|a5.sportback|a6|a8|s60|s90|v60|s80|ct4|ct5|ct6|ats|xts|tsx|rlx|rl|tlx|ilx|integra|legend|laurel|skyline|teana|cefiro|victoria|crown|mark.x|sail|cavalier|onix|prisma|classic|astra|vectra|insignia|monza|cobalt|cruze|malibu|impala|caprice|fusion)\b/i;
 const HATCHBACK_MODELS = /\b(golf|yaris|fit|jazz|fiesta|focus|mazda2|mazda3|swift|baleno|celerio|ignis|spark|matiz|aveo|sonic|polo|ibiza|leon|clio|megane|208|308|508|c3|c4|micra|note|pulse|kwid|tiago|nano|alto|splash|agile|onix.hatch|prisma.hatch|fiesta.hatch|focus.hatch|corsa|astra|vectra.hatch|insignia.hatch|i20|i10|i30|rio.hatch|forte5|ceed|proceed|xceed|swift.sport|vitara)\b/i;
 const COUPE_MODELS = /\b(mustang|camaro|charger|challenger|corvette|supra|gt86|gr86|brz|fr-s|mx-5|miata|s2000|nsx|rc-f|lc500|rc350|370z|350z|z4|m2|m4|i8|tt|r8|a5.coupe|s5.coupe|e-class.coupe|c-class.coupe|clc|4-series|6-series|8-series|porsche.911|porsche.718|cayman|boxster|458|488|f8|roma|portofino|huracan|aventador|urus|golf.gti|golf.r|civic.type.r|focus.rs|megane.rs|i30.n|veloster|elantra.coupe|ford.gt|viper|db11|vantage|dbs|continental.gt|supra)\b/i;
@@ -92,9 +92,12 @@ function mapToApiVehicleType(t?: string | null): any {
   const l = t.toLowerCase();
   if (l.includes('motorcycle') || l.includes('moto')) return 'motorcycle';
   if (l.includes('trailer')) return 'trailer';
-  if (l.includes('sedan') || l.includes('chico') || l.includes('coupe') || l.includes('hatchback')) return 'small';
-  if (l.includes('suv') || l.includes('mediano')) return 'medium';
-  return 'large';
+  
+  if (l.includes('large suv') || l.includes('pickup') || l.includes('minivan') || l.includes('van') || l.includes('truck') || l.includes('grande')) return 'large';
+  if (l.includes('suv') || l.includes('mediano') || l.includes('crossover')) return 'medium';
+  if (l.includes('sedan') || l.includes('chico') || l.includes('coupe') || l.includes('hatchback') || l.includes('wagon') || l.includes('convertible')) return 'small';
+  
+  return 'medium';
 }
 
 function arrayBufferToBase64(buf: ArrayBuffer): string {
@@ -533,7 +536,7 @@ export default function EditarVehiculoScreen() {
                     <Text style={{ fontSize: 32, marginRight: 10 }}>{tipoStr}</Text>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.text }}>
-                        {veh.marca} {veh.modelo}
+                        {[veh.marca, veh.modelo, veh.tipoVehiculo ? `(${veh.tipoVehiculo})` : null].filter(Boolean).join(' ')}
                       </Text>
                       <Text style={{ fontSize: 14, color: theme.textMuted }}>
                         Placa: {veh.placa || 'N/A'} • Color: {veh.color || 'N/A'}

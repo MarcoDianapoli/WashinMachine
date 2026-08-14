@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing, Image } from 'react-native';
 import Reanimated, { FadeInDown } from 'react-native-reanimated';
 import * as WebBrowser from 'expo-web-browser';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useApp } from '@/store';
 import { Colors } from '@/constants/Colors';
 import { SpeedometerLoader } from '@/components/speedometer-loader';
@@ -132,6 +132,7 @@ export default function PagoScreen() {
 
   return (
     <View style={styles.container}>
+      <Stack.Screen options={{ title: 'Pago', headerBackTitle: 'Atrás' }} />
       <Reanimated.View entering={FadeInDown.springify()} style={styles.content}>
         <Text style={styles.eyebrow}>PAGO</Text>
         <Text style={styles.title}>Completa tu pago</Text>
@@ -139,7 +140,7 @@ export default function PagoScreen() {
         <Reanimated.View entering={FadeInDown.delay(100).springify()} style={styles.card}>
           <Text style={styles.cardLabel}>RESUMEN DE TU CITA</Text>
           <Text style={styles.cardPackage}>{paqueteNombre || 'Lavado'}</Text>
-          <Text style={styles.cardPrice}>${precio || '0'}</Text>
+          <Text style={styles.cardPrice}>{precio?.startsWith('$') ? precio : `$${precio || '0'}`}</Text>
           <View style={styles.cardDivider} />
           <View style={styles.cardRow}>
             <Text style={styles.cardRowLabel}>Fecha</Text>
@@ -169,8 +170,10 @@ export default function PagoScreen() {
         {(state === 'idle' || state === 'failed') && (
           <Reanimated.View entering={FadeInDown.delay(200).springify()}>
             <TouchableOpacity style={styles.payButton} onPress={handlePay} activeOpacity={0.85}>
-              <Text style={styles.payButtonText}>💳  Pagar con Mercado Pago</Text>
+              <Image source={{ uri: 'https://http2.mlstatic.com/frontend-assets/ui-navigation/5.19.1/mercadopago/logo__icon.png' }} style={styles.mpLogo} resizeMode="contain" />
+              <Text style={styles.payButtonText}>Pagar con Mercado Pago</Text>
             </TouchableOpacity>
+            <Text style={styles.secureText}>Paga de forma segura</Text>
 
             <TouchableOpacity style={styles.skipButton} onPress={handleSkip} activeOpacity={0.7}>
               <Text style={styles.skipButtonText}>Pagar al llegar</Text>
@@ -205,8 +208,10 @@ const getStyles = (tema: 'claro' | 'oscuro') => {
     cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
     cardRowLabel: { fontSize: 14, color: theme.textMuted },
     cardRowValue: { fontSize: 16, fontWeight: '600', color: theme.text },
-    payButton: { backgroundColor: theme.primary, paddingVertical: 18, borderRadius: 999, alignItems: 'center', marginBottom: 14 },
-    payButtonText: { color: '#ffffff', fontSize: 18, fontWeight: '800' },
+    payButton: { backgroundColor: '#009EE3', paddingVertical: 16, borderRadius: 8, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 6, gap: 12 },
+    mpLogo: { width: 30, height: 30 },
+    payButtonText: { color: '#ffffff', fontSize: 17, fontWeight: '600' },
+    secureText: { color: theme.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 14, fontWeight: '500' },
     skipButton: { paddingVertical: 14, alignItems: 'center' },
     skipButtonText: { color: theme.textMuted, fontSize: 16, fontWeight: '500' },
     retryLink: { paddingVertical: 10, alignItems: 'center' },

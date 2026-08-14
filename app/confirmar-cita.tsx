@@ -99,12 +99,15 @@ export default function ConfirmarCitaScreen() {
       await syncAppointments();
       showToast('Cita creada exitosamente en la base de datos');
       
-      if (paymentsEnabled && res?.price && res.price > 0) {
+      const finalPriceStr = res?.price !== undefined ? String(res.price) : paquete?.precio;
+      const parsedPrice = parseFloat((finalPriceStr || '0').replace('$', ''));
+      
+      if (paymentsEnabled && parsedPrice > 0) {
         router.replace({
           pathname: '/pago',
           params: {
             appointmentId: res._id,
-            precio: String(res.price),
+            precio: finalPriceStr || '0',
             paqueteNombre: res.packageName || paquete?.nombre || '',
             fecha: fecha,
             hora: hora,
@@ -176,7 +179,9 @@ export default function ConfirmarCitaScreen() {
                       onPress={() => setVehiculoSeleccionadoIdx(i)}
                       style={[styles.vehiculoCard, isSelected && styles.vehiculoCardSelected]}
                     >
-                      <Text style={[styles.vehiculoTitle, isSelected && styles.textWhite]}>{v.marca} {v.modelo}</Text>
+                      <Text style={[styles.vehiculoTitle, isSelected && styles.textWhite]}>
+                        {[v.marca, v.modelo, v.tipoVehiculo ? `(${v.tipoVehiculo})` : null].filter(Boolean).join(' ')}
+                      </Text>
                       <Text style={[styles.vehiculoSub, isSelected && styles.textWhite]}>{v.placa || 'Sin placa'}</Text>
                     </TouchableOpacity>
                   );

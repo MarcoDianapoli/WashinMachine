@@ -70,6 +70,7 @@
     },
     "plugins": [
       "expo-router",
+      "@react-native-google-signin/google-signin",
       "./plugins/withForegroundService",
       [
         "expo-notifications",

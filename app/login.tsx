@@ -1,13 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Switch, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { useApp } from '@/store';
 import { Colors } from '@/constants/Colors';
 import { Config } from '@/constants/Config';
 import { SpeedometerLoader } from '@/components/speedometer-loader';
-
-WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -22,12 +20,17 @@ export default function LoginScreen() {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const isGoogleConfigured = useMemo(() => {
-    return Boolean(Config.GOOGLE_CLIENT_ID && !Config.GOOGLE_CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID'));
+    const configured = Boolean(Config.GOOGLE_CLIENT_ID && !Config.GOOGLE_CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID'));
+    return configured;
   }, []);
 
-  const redirectUri = useMemo(() => {
-    return 'https://auth.expo.io/@marcodianapoli/autolavado';
-  }, []);
+  useEffect(() => {
+    if (isGoogleConfigured) {
+      GoogleSignin.configure({
+        webClientId: Config.GOOGLE_CLIENT_ID,
+      });
+    }
+  }, [isGoogleConfigured]);
 
   const iniciarSesion = async () => {
     if (!email.trim() || !password.trim()) {
@@ -55,44 +58,37 @@ export default function LoginScreen() {
   };
 
   const handleGoogleLogin = async () => {
-    const clientId = Config.GOOGLE_CLIENT_ID;
-
     if (!isGoogleConfigured) {
       Alert.alert(
         'Configuración de Google',
-        'Para activar Google Sign-In, coloca tu GOOGLE_CLIENT_ID en "constants/Config.ts".'
+        'Para activar Google Sign-In, coloca tu GOOGLE_CLIENT_ID en "constants/Config.ts" y asegúrate de crear el ID de Android en Google Cloud Console.'
       );
       return;
     }
 
     setGoogleLoading(true);
     try {
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `response_type=id_token` +
-        `&client_id=${encodeURIComponent(clientId)}` +
-        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-        `&scope=${encodeURIComponent('openid email profile')}` +
-        `&nonce=${Math.random().toString(36).substring(2)}`;
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = userInfo.data?.idToken;
 
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-
-      if (result.type === 'success' && result.url) {
-        const match = result.url.match(/id_token=([^&]+)/);
-        const idToken = match ? match[1] : null;
-
-        if (idToken) {
-          const user = await loginWithGoogle(idToken);
-          showToast(`Bienvenido ${user.nombre}`);
-          router.replace('/(tabs)');
-          return;
-        }
-      }
-
-      if (result.type === 'cancel' || result.type === 'dismiss') {
-        showToast('Inicio de sesión cancelado');
+      if (idToken) {
+        const user = await loginWithGoogle(idToken);
+        showToast(`Bienvenido ${user.nombre || ''}`);
+        router.replace('/(tabs)');
+      } else {
+        throw new Error('No se pudo obtener el token de Google');
       }
     } catch (err: any) {
-      showToast(err?.message || 'Error al iniciar sesión con Google');
+      if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+        showToast('Inicio de sesión cancelado');
+      } else if (err.code === statusCodes.IN_PROGRESS) {
+        showToast('Inicio de sesión en progreso');
+      } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        showToast('Google Play Services no disponible');
+      } else {
+        showToast(err?.message || 'Error al iniciar sesión con Google');
+      }
     } finally {
       setGoogleLoading(false);
     }

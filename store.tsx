@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { AppStateStatus, AppState as RNAppState, Platform } from 'react-native';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { io, Socket } from 'socket.io-client';
 import type { Cliente, Cita, Vehiculo, AuthUser } from '@/types';
 import { loadPersistedData, savePersistedData, getPersistedToken, setPersistedToken } from '@/lib/storage';
@@ -87,11 +89,15 @@ interface PersistedData {
 function vehicleTypeToTamano(type: string | null): TamanoVehiculo {
   if (!type) return 'mediano';
   const t = type.toLowerCase();
-  if (/motorcycle|moto/.test(t)) return 'moto';
-  if (/trailer/.test(t)) return 'trailer';
-  if (/small|chico|sedan|hatchback|coupe|convertible|wagon/.test(t)) return 'chico';
-  if (/medium|mediano|suv|crossover/.test(t)) return 'mediano';
-  return 'grande';
+  
+  if (t.includes('motorcycle') || t.includes('moto')) return 'moto';
+  if (t.includes('trailer')) return 'trailer';
+  
+  if (t.includes('large suv') || t.includes('pickup') || t.includes('minivan') || t.includes('van') || t.includes('truck') || t.includes('grande')) return 'grande';
+  if (t.includes('suv') || t.includes('crossover') || t.includes('medium') || t.includes('mediano')) return 'mediano';
+  if (t.includes('sedan') || t.includes('hatchback') || t.includes('coupe') || t.includes('convertible') || t.includes('wagon') || t.includes('small') || t.includes('chico')) return 'chico';
+  
+  return 'mediano';
 }
 
 function mapApiRole(role?: string): AuthUser['rol'] {
@@ -126,14 +132,18 @@ function mapApiUser(
   };
 }
 
-function mapApiVehicleToVehiculo(v: ApiVehicle): Vehiculo {
-  let tipo = 'Mediano';
-  if (v.vehicleType === 'small') tipo = 'Sedán / Chico';
-  else if (v.vehicleType === 'medium') tipo = 'SUV / Mediano';
-  else if (v.vehicleType === 'large') tipo = 'Camioneta / Grande';
-  else if (v.vehicleType === 'motorcycle') tipo = 'Motocicleta';
-  else if (v.vehicleType === 'trailer') tipo = 'Tráiler / Pesado';
+export function getVehicleTypeDisplay(type?: string | null): string {
+  if (!type) return '';
+  const t = type.toLowerCase();
+  if (t.includes('small') || t.includes('sedan') || t.includes('hatchback') || t.includes('coupe')) return 'Sedán / Chico';
+  if (t.includes('medium') || t.includes('suv') || t.includes('crossover')) return 'SUV / Mediano';
+  if (t.includes('large') || t.includes('pickup') || t.includes('minivan') || t.includes('van') || t.includes('camioneta')) return 'Camioneta / Grande';
+  if (t.includes('motorcycle') || t.includes('moto')) return 'Motocicleta';
+  if (t.includes('trailer')) return 'Tráiler / Pesado';
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
 
+function mapApiVehicleToVehiculo(v: ApiVehicle): Vehiculo {
   return {
     _id: v._id,
     placa: v.plate || '',
@@ -142,7 +152,7 @@ function mapApiVehicleToVehiculo(v: ApiVehicle): Vehiculo {
     color: v.color || '',
     anio: v.year || '',
     imagenUri: v.imageUri || undefined,
-    tipoVehiculo: tipo,
+    tipoVehiculo: getVehicleTypeDisplay(v.vehicleType),
   };
 }
 
@@ -163,7 +173,7 @@ function mapApiAppointmentToCita(a: ApiAppointment): Cita {
     modelo: a.vehicle.model || '',
     color: a.vehicle.color || '',
     anio: a.vehicle.year || '',
-    tipoVehiculo: a.vehicle.vehicleType || '',
+    tipoVehiculo: getVehicleTypeDisplay(a.vehicle.vehicleType),
   } : undefined;
 
   return {
@@ -569,6 +579,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await logoutApi();
       }
     } catch {}
+    
+    try {
+      if (GoogleSignin.hasPreviousSignIn()) {
+        await GoogleSignin.signOut();
+      }
+    } catch (e) {
+      console.log('Error signing out of Google:', e);
+    }
+
     await stopForegroundMonitoring().catch(() => {});
     await setPersistedToken(null);
     setApiToken(null);
